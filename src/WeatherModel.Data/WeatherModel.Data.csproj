@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Everything that touches the outside world: file parsing, and later, downloads. -->
+    <PropertyGroup>
+        <RootNamespace>WeatherModel.Data</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../WeatherModel.Core/WeatherModel.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Single-line parsing is an implementation detail, but it is where the -999 sentinel
+             and the J/cm² conversion live, so the tests need at it. -->
+        <InternalsVisibleTo Include="WeatherModel.Core.Tests" />
+    </ItemGroup>
+
+</Project>
