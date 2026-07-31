@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>WeatherSynth.Sample</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/WeatherSynth.Core/WeatherSynth.Core.csproj" />
+    <ProjectReference Include="../../src/WeatherSynth.Data/WeatherSynth.Data.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+      The calculation library. Deliberately I/O-free: no file access, no network, no
+      knowledge of any particular data source. That is what keeps it testable, and it is
+      the layering rule knowledge.md calls for.
+    -->
+  <PropertyGroup>
+    <RootNamespace>WeatherSynth</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SolarCalculator" Version="3.6.1" />
+  </ItemGroup>
+</Project>
