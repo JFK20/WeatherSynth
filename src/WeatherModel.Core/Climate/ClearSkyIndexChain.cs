@@ -41,23 +41,29 @@ namespace WeatherModel.Climate
         private double _latent;
         private DateOnly? _lastDate;
 
+        /// <summary>A chain at the persistence the model was fitted with.</summary>
         /// <param name="model">Fitted index distributions, which also carry the fitted phi.</param>
-        /// <param name="persistenceOverride">
-        /// Overrides the model's fitted <see cref="ClearSkyIndexModel.Persistence"/>. Zero
-        /// reduces the chain exactly to independent sampling, which is what the reports use to
-        /// show the before-and-after. Must be in [0, 1) to stay stationary.
+        public ClearSkyIndexChain(ClearSkyIndexModel model)
+            : this(model, (model ?? throw new ArgumentNullException(nameof(model))).Persistence)
+        {
+        }
+
+        /// <summary>A chain at a stated persistence, whatever the model was fitted with.</summary>
+        /// <param name="model">Fitted index distributions, which supply the monthly marginals.</param>
+        /// <param name="persistence">
+        /// The AR(1) coefficient to run at, in [0, 1). Zero reduces the chain exactly to
+        /// independent sampling, which is what the reports use as the before-and-after baseline.
         /// </param>
-        public ClearSkyIndexChain(ClearSkyIndexModel model, double? persistenceOverride = null)
+        public ClearSkyIndexChain(ClearSkyIndexModel model, double persistence)
         {
             _model = model ?? throw new ArgumentNullException(nameof(model));
 
-            double phi = persistenceOverride ?? model.Persistence;
-            if (!(phi >= 0.0) || phi >= 1.0)
+            if (!(persistence >= 0.0) || persistence >= 1.0)
                 throw new ArgumentOutOfRangeException(
-                    nameof(persistenceOverride), phi,
+                    nameof(persistence), persistence,
                     "Persistence must be in [0, 1); at 1 the process has no stationary distribution.");
 
-            Persistence = phi;
+            Persistence = persistence;
         }
 
         /// <summary>The AR(1) coefficient this chain is running at.</summary>
@@ -89,22 +95,18 @@ namespace WeatherModel.Climate
 
             int gap = _lastDate is { } previous ? date.DayNumber - previous.DayNumber : 0;
 
-            if (gap <= 0)
-            {
-                // A fresh start, or a caller that went backwards. Draw from the stationary
-                // distribution rather than carrying a value whose lag is meaningless.
-                _latent = Gaussian.Sample(random);
-            }
-            else
-            {
-                // Gap-aware, and this is not cosmetic: 7.4% of the DWD record is missing, so a
-                // two-day hole has to decay the correlation twice. The matching sqrt(1 - decay^2)
-                // is what keeps the latent variable standard normal across the gap - use phi
-                // with a plain 1 - phi^2 and the process drifts off its own scale.
-                double decay = Math.Pow(Persistence, gap);
-                _latent = decay * _latent
-                          + Math.Sqrt(Math.Max(0.0, 1.0 - decay * decay)) * Gaussian.Sample(random);
-            }
+            // Gap-aware, and this is not cosmetic: 7.4% of the DWD record is missing, so a two-day
+            // hole has to decay the correlation twice. The matching sqrt(1 - decay^2) is what keeps
+            // the latent variable standard normal across the gap - use phi with a plain 1 - phi^2
+            // and the process drifts off its own scale.
+            //
+            // A fresh start, or a caller that went backwards, is total decay: the update below
+            // reduces to a draw from the stationary distribution, which is exactly right when the
+            // previous value's lag is meaningless.
+            double decay = gap > 0 ? Math.Pow(Persistence, gap) : 0.0;
+
+            _latent = decay * _latent
+                      + Math.Sqrt(Math.Max(0.0, 1.0 - decay * decay)) * Gaussian.Sample(random);
 
             _lastDate = date;
 

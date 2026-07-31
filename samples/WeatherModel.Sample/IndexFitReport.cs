@@ -98,19 +98,16 @@ public static class IndexFitReport
         var start = series[0].Date;
         var end = start.AddYears(15);
 
-        // Two runs from the same seed, differing only in phi. The phi = 0 run is exactly what
-        // this model produced before the persistence layer existed, so the two lines below are a
-        // genuine before-and-after rather than a remembered number.
-        var independent = new SyntheticSolarGenerator(model, Ceiling(station), persistenceOverride: 0.0)
-            .Generate(start, end, new Random(20260731))
-            .ToList();
-
         var synthetic = new SyntheticSolarGenerator(model, Ceiling(station))
-            .Generate(start, end, new Random(20260731))
+            .Generate(start, end, new Random(Seed))
             .ToList();
 
+        // The same span from the same seed at phi = 0, which is exactly what this model produced
+        // before the persistence layer existed - a genuine before-and-after rather than a
+        // remembered number. Straight off the chain: the claim is about the index sequence, and
+        // the ceiling would only multiply both sides of it by the same numbers.
         double sampledIndependent = IndexSeriesStatistics.Lag1Autocorrelation(
-            independent.Select(d => (d.Date, d.ClearSkyIndex)));
+            IndexSeries(model, start, end, persistence: 0.0));
         double sampled = IndexSeriesStatistics.Lag1Autocorrelation(
             synthetic.Select(d => (d.Date, d.ClearSkyIndex)));
 
@@ -151,6 +148,29 @@ public static class IndexFitReport
         Console.WriteLine($"  Synthetic mean annual GHI: {syntheticAnnual,8:F0} kWh/m²");
         Console.WriteLine($"  Difference: {(syntheticAnnual - measuredAnnual) / measuredAnnual:P1}");
         Console.WriteLine();
+    }
+
+    /// <summary>
+    /// The seed every synthetic run in the reports uses. Shared, because the before-and-after
+    /// comparisons are only meaningful when both sides differ in nothing but phi.
+    /// </summary>
+    internal const int Seed = 20260731;
+
+    /// <summary>
+    /// A run of clear-sky indices at a stated persistence, with no clear-sky ceiling involved.
+    ///
+    /// <para>What the persistence comparisons actually need. Going through
+    /// <see cref="SyntheticSolarGenerator"/> instead would integrate a full day of irradiance per
+    /// date - the expensive half of the pipeline - and then discard all of it.</para>
+    /// </summary>
+    internal static IEnumerable<(DateOnly Date, double Index)> IndexSeries(
+        ClearSkyIndexModel model, DateOnly start, DateOnly endInclusive, double persistence)
+    {
+        var chain = new ClearSkyIndexChain(model, persistence);
+        var random = new Random(Seed);
+
+        for (var date = start; date <= endInclusive; date = date.AddDays(1))
+            yield return (date, chain.Next(date, random));
     }
 
     internal static DailyClearSkyCalculator Ceiling(DwdStation station) => new(

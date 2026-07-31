@@ -7,7 +7,7 @@ namespace WeatherModel.Core.Tests;
 /// <summary>
 /// The normal distribution is not part of the weather model - the index is bounded and skewed,
 /// which is what <see cref="ScaledBeta"/> is for. It exists only as the latent space the AR(1)
-/// persistence runs in (knowledge.md §11), and it earns its place there by round-tripping
+/// persistence runs in (knowledge.md §13), and it earns its place there by round-tripping
 /// cleanly: any bias in <see cref="Gaussian.Cdf"/> or <see cref="Gaussian.Quantile"/> shows up as
 /// a distorted marginal after the copula transform.
 /// </summary>

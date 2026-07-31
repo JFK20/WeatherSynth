@@ -6,7 +6,7 @@ namespace WeatherModel.Climate
     /// The standard normal distribution: CDF, quantile, and a draw.
     ///
     /// <para>Present only because the persistence layer needs it. The clear-sky index itself is
-    /// never modelled as normal it is bounded on both ends and skewed, which is why
+    /// never modelled as normal - it is bounded on both ends and skewed, which is why
     /// <see cref="ScaledBeta"/> exists. What the normal is used for here is the <i>latent</i>
     /// variable of the AR(1) chain in <see cref="ClearSkyIndexChain"/>: an unbounded space where
     /// "yesterday times phi plus noise" is a sensible thing to write, from which
@@ -17,6 +17,33 @@ namespace WeatherModel.Climate
     /// </summary>
     public static class Gaussian
     {
+        // Acklam's coefficients for Quantile. Static, because they are constants and Quantile runs
+        // once per record day inside the persistence fit - as locals they would be four heap
+        // allocations on every call.
+        private static readonly double[] CentralNumerator =
+        {
+            -3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+            1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00
+        };
+
+        private static readonly double[] CentralDenominator =
+        {
+            -5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+            6.680131188771972e+01, -1.328068155288572e+01
+        };
+
+        private static readonly double[] TailNumerator =
+        {
+            -7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+            -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00
+        };
+
+        private static readonly double[] TailDenominator =
+        {
+            7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+            3.754408661907416e+00
+        };
+
         /// <summary>
         /// Probability that a standard normal draw falls at or below <paramref name="z"/>.
         ///
@@ -83,26 +110,10 @@ namespace WeatherModel.Climate
             if (p <= 0.0) return double.NegativeInfinity;
             if (p >= 1.0) return double.PositiveInfinity;
 
-            double[] a =
-            {
-                -3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
-                1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00
-            };
-            double[] b =
-            {
-                -5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
-                6.680131188771972e+01, -1.328068155288572e+01
-            };
-            double[] c =
-            {
-                -7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
-                -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00
-            };
-            double[] d =
-            {
-                7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
-                3.754408661907416e+00
-            };
+            double[] a = CentralNumerator;
+            double[] b = CentralDenominator;
+            double[] c = TailNumerator;
+            double[] d = TailDenominator;
 
             const double low = 0.02425;
             const double high = 1.0 - low;

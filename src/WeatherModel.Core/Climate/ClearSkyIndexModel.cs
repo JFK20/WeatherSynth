@@ -20,7 +20,7 @@ namespace WeatherModel.Climate
     /// two resolutions agree.</para>
     ///
     /// <para><b>The marginals alone are not enough.</b> Sampling from these twelve curves
-    /// independently per day gives the right histogram and the wrong sequences real cloudy
+    /// independently per day gives the right histogram and the wrong sequences - real cloudy
     /// spells cluster, independent draws scatter. <see cref="ClearSkyIndexChain"/> supplies the
     /// missing ordering using <see cref="Persistence"/>, without touching the shapes;
     /// <see cref="IndexSeriesStatistics.Lag1Autocorrelation"/> on observed against synthetic
@@ -68,15 +68,18 @@ namespace WeatherModel.Climate
         /// Lag-1 coefficient of the latent AR(1) process behind the index, in [0, 1).
         ///
         /// <para>The thirteenth parameter of the model, and the only one that is not a shape. It
-        /// is measured on the <i>normal scores</i> of the record each day mapped through its own
-        /// month's fitted CDF and then through the inverse normal not on the raw index. That
+        /// is measured on the <i>normal scores</i> of the record - each day mapped through its own
+        /// month's fitted CDF and then through the inverse normal - not on the raw index. That
         /// transform divides out the seasonal cycle by construction, so what is left is weather
         /// persistence alone.</para>
         ///
-        /// <para>This is why it is larger than the 0.437 lag-1 of the raw Bochum series: that
-        /// figure is diluted by the Beta shapes, and the seasonal component it contains is
+        /// <para>At Bochum this comes out at 0.353, <i>smaller</i> than the 0.437 lag-1 of the raw
+        /// index, because 0.137 of that 0.437 is the seasonal cycle on its own - and the season is
         /// re-supplied downstream by the twelve monthly marginals rather than by this number.
-        /// Fitting phi directly against 0.437 would count the season twice.</para>
+        /// Fitting phi directly against 0.437 would count it twice. The direction is
+        /// site-dependent: a site with a weak seasonal swing and strongly shaped Betas goes the
+        /// other way, so read the two numbers as living in different spaces rather than as a
+        /// correction to each other (knowledge.md §13).</para>
         /// </summary>
         public double Persistence { get; }
 
@@ -110,11 +113,8 @@ namespace WeatherModel.Climate
             for (int i = 0; i < 12; i++)
                 byMonth[i] = new List<double>();
 
-            var all = new List<double>();
-
             // Dates are kept alongside the values because the persistence fit below needs them,
-            // and the caller's sequence may be lazy
-            // enumerating it a second time is not safe.
+            // and the caller's sequence may be lazy - enumerating it a second time is not safe.
             var dated = new List<(DateOnly Date, double Index)>();
 
             foreach (var day in series)
@@ -124,14 +124,13 @@ namespace WeatherModel.Climate
                     continue;
 
                 byMonth[day.Date.Month - 1].Add(index);
-                all.Add(index);
                 dated.Add((day.Date, index));
             }
 
-            if (all.Count == 0)
+            if (dated.Count == 0)
                 throw new ArgumentException("No usable days in the series.", nameof(series));
 
-            var pooled = ScaledBeta.FitByMoments(all, support);
+            var pooled = ScaledBeta.FitByMoments(dated.Select(d => d.Index), support);
 
             var monthly = new ScaledBeta[12];
             for (int i = 0; i < 12; i++)
@@ -156,7 +155,7 @@ namespace WeatherModel.Climate
         /// <para>Each day is mapped through its own month's fitted CDF, giving a value that is
         /// uniform if the fit is good, and then through the inverse normal. Because the transform
         /// is per month, the seasonal cycle comes out with it and the resulting series carries
-        /// weather persistence and nothing else so its lag-1 correlation <i>is</i> phi, with no
+        /// weather persistence and nothing else - so its lag-1 correlation <i>is</i> phi, with no
         /// simulation loop or search required.</para>
         /// </summary>
         private static double FitPersistence(
@@ -187,7 +186,14 @@ namespace WeatherModel.Climate
             return Math.Clamp(phi, 0.0, MaximumPersistence);
         }
 
-        /// <summary>Draws one clear-sky index for the given calendar month.</summary>
+        /// <summary>
+        /// Draws one clear-sky index for the given calendar month, independently of every other
+        /// draw.
+        ///
+        /// <para>Right for a single day, wrong for a series: this is the marginal on its own,
+        /// which is the histogram-right, sequence-wrong behaviour described above. Use
+        /// <see cref="ClearSkyIndexChain"/> for anything longer than one day.</para>
+        /// </summary>
         public double Sample(int month, Random random) => ForMonth(month).Sample(random);
     }
 
@@ -201,8 +207,10 @@ namespace WeatherModel.Climate
         ///
         /// <para>The single number that says whether a generator reproduces cloud persistence.
         /// Independent sampling gives ~0 by construction whatever its histogram looks like;
-        /// measured daily solar records typically land around 0.3-0.5. This is the gap a Markov
-        /// chain or an autoregressive term is there to close.</para>
+        /// measured daily solar records typically land around 0.3-0.5. This is the acceptance
+        /// check on <see cref="ClearSkyIndexChain"/>, and it is also what fits the chain's
+        /// coefficient - run over the record's normal scores it yields
+        /// <see cref="ClearSkyIndexModel.Persistence"/> directly.</para>
         ///
         /// <para>Only genuinely consecutive calendar days count as pairs, so gaps in the record
         /// are skipped rather than being treated as adjacent.</para>

@@ -36,14 +36,14 @@ public static class VisualizationExport
         Console.WriteLine($"Fitted {series.Count:N0} days. Generating a matching synthetic record ...");
 
         var synthetic = new SyntheticSolarGenerator(model, IndexFitReport.Ceiling(station))
-            .Generate(series[0].Date, series[^1].Date, new Random(20260731))
+            .Generate(series[0].Date, series[^1].Date, new Random(IndexFitReport.Seed))
             .ToList();
 
-        // The same run with persistence switched off, so the page can show what the AR(1) term
-        // actually bought rather than asserting it.
-        var independent = new SyntheticSolarGenerator(
-                model, IndexFitReport.Ceiling(station), persistenceOverride: 0.0)
-            .Generate(series[0].Date, series[^1].Date, new Random(20260731))
+        // The same span and seed with persistence switched off, so the page can show what the
+        // AR(1) term actually bought rather than asserting it. Indices only - the page quotes one
+        // autocorrelation from this, and irradiance would not change it.
+        var independent = IndexFitReport
+            .IndexSeries(model, series[0].Date, series[^1].Date, persistence: 0.0)
             .ToList();
 
         var payload = BuildPayload(series, synthetic, independent, model, station);
@@ -71,7 +71,7 @@ public static class VisualizationExport
     private static JsonObject BuildPayload(
         IReadOnlyList<DailyClearness> observed,
         IReadOnlyList<SyntheticSolarDay> synthetic,
-        IReadOnlyList<SyntheticSolarDay> independent,
+        IReadOnlyList<(DateOnly Date, double Index)> independent,
         ClearSkyIndexModel model,
         DwdStation station)
     {
@@ -81,8 +81,7 @@ public static class VisualizationExport
             observed.Select(d => (d.Date, d.ClearSkyIndex)));
         double syntheticAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(
             synthetic.Select(d => (d.Date, d.ClearSkyIndex)));
-        double independentAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(
-            independent.Select(d => (d.Date, d.ClearSkyIndex)));
+        double independentAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(independent);
 
         return new JsonObject
         {

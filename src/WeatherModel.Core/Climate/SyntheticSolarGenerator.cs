@@ -48,23 +48,23 @@ namespace WeatherModel.Climate
 
         /// <param name="model">Fitted index distribution, from a measured record.</param>
         /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
-        /// <param name="persistenceOverride">
-        /// Overrides the fitted persistence. Pass 0 to reproduce independent day-by-day sampling,
-        /// which is what the reports compare against.
-        /// </param>
-        public SyntheticSolarGenerator(
-            ClearSkyIndexModel model,
-            DailyClearSkyCalculator ceiling,
-            double? persistenceOverride = null)
+        public SyntheticSolarGenerator(ClearSkyIndexModel model, DailyClearSkyCalculator ceiling)
+            : this(new ClearSkyIndexChain(model), ceiling)
         {
-            if (model is null) throw new ArgumentNullException(nameof(model));
-
-            _ceiling = ceiling ?? throw new ArgumentNullException(nameof(ceiling));
-            _chain = new ClearSkyIndexChain(model, persistenceOverride);
         }
 
-        /// <summary>The AR(1) coefficient the underlying chain is running at.</summary>
-        public double Persistence => _chain.Persistence;
+        /// <summary>
+        /// Takes the index source directly, for callers that want something other than the fitted
+        /// persistence - a chain at phi 0 is the independent-sampling baseline the reports
+        /// compare against.
+        /// </summary>
+        /// <param name="chain">Source of clear-sky indices. This generator owns its state.</param>
+        /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
+        public SyntheticSolarGenerator(ClearSkyIndexChain chain, DailyClearSkyCalculator ceiling)
+        {
+            _chain = chain ?? throw new ArgumentNullException(nameof(chain));
+            _ceiling = ceiling ?? throw new ArgumentNullException(nameof(ceiling));
+        }
 
         /// <summary>Starts a fresh run, forgetting the previous day's weather.</summary>
         public void Reset() => _chain.Reset();
@@ -102,8 +102,17 @@ namespace WeatherModel.Climate
             if (endInclusive < start)
                 throw new ArgumentException("End must not precede start.", nameof(endInclusive));
 
+            // Outside the iterator, so both the argument checks and the reset happen when Generate
+            // is called rather than on the first MoveNext. Otherwise two enumerables taken from one
+            // generator would silently share a chain until whichever was enumerated first.
             Reset();
 
+            return Iterate(start, endInclusive, random);
+        }
+
+        private IEnumerable<SyntheticSolarDay> Iterate(
+            DateOnly start, DateOnly endInclusive, Random random)
+        {
             for (var date = start; date <= endInclusive; date = date.AddDays(1))
                 yield return GenerateDay(date, random);
         }

@@ -7,30 +7,17 @@ namespace WeatherModel.Core.Tests;
 /// <summary>
 /// The persistence layer, tested without a solar calculator in the way. Everything the chain has
 /// to get right is a property of the index sequence alone: the marginal must survive untouched,
-/// the correlation must appear, and gaps must break it (knowledge.md §11-12).
+/// the correlation must appear, and gaps must break it (knowledge.md §13).
 /// </summary>
 public class ClearSkyIndexChainTests
 {
-    private const double Scale = 1.25;
+    private const double Scale = ClearSkyIndexModel.DefaultSupport;
 
     /// <summary>
-    /// A model with a deliberate seasonal swing, fitted from a record rather than constructed,
-    /// because <see cref="ClearSkyIndexModel"/> has no public constructor.
+    /// The seasonally swinging model the distribution suite fits, shared so that "the marginal
+    /// survives" is a claim about the same marginals that suite scores.
     /// </summary>
-    private static ClearSkyIndexModel SeasonalModel()
-    {
-        var random = new Random(4242);
-        var series = new List<DailyClearness>();
-
-        for (var date = new DateOnly(2010, 1, 1); date.Year < 2020; date = date.AddDays(1))
-        {
-            double seasonal = 0.55 + 0.20 * Math.Cos((date.DayOfYear - 196) / 365.25 * 2.0 * Math.PI);
-            double index = new ScaledBeta(seasonal * 8.0, (1.0 - seasonal) * 8.0, Scale).Sample(random);
-            series.Add(new DailyClearness(date, index * 5000.0, 5000.0, 8000.0));
-        }
-
-        return ClearSkyIndexModel.Fit(series);
-    }
+    private static ClearSkyIndexModel SeasonalModel() => ClimateFixtures.SeasonalModel;
 
     private static List<(DateOnly Date, double Index)> Run(
         ClearSkyIndexChain chain, DateOnly start, int days, Random random)
@@ -85,7 +72,7 @@ public class ClearSkyIndexChainTests
         // moving the histogram. Checked against July's own fitted CDF by KS at the 5% level.
         var model = SeasonalModel();
         var july = model.ForMonth(7);
-        var chain = new ClearSkyIndexChain(model, persistenceOverride: 0.6);
+        var chain = new ClearSkyIndexChain(model, 0.6);
         var random = new Random(7);
 
         // A single month, so one marginal governs the whole sample: July of 400 successive years.
@@ -100,16 +87,8 @@ public class ClearSkyIndexChainTests
 
         draws.Should().OnlyContain(v => v >= 0.0 && v <= Scale);
 
-        var sorted = draws.OrderBy(v => v).ToList();
-        double worst = 0.0;
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            double fitted = july.CumulativeProbability(sorted[i]);
-            worst = Math.Max(worst, Math.Abs((i + 1.0) / sorted.Count - fitted));
-            worst = Math.Max(worst, Math.Abs(fitted - (double)i / sorted.Count));
-        }
-
-        worst.Should().BeLessThan(1.36 / Math.Sqrt(sorted.Count));
+        ClimateFixtures.KolmogorovSmirnov(draws, july)
+            .Should().BeLessThan(1.36 / Math.Sqrt(draws.Count));
     }
 
     [Theory]
@@ -120,9 +99,9 @@ public class ClearSkyIndexChainTests
     {
         // The copula transform is monotone but nonlinear, so a little shrinkage on the way from
         // latent space back to the index is expected and the band below is asymmetric to allow
-        // for it. This is exactly why the acceptance check in knowledge.md §12 is run on the full
+        // for it. This is exactly why the acceptance check in knowledge.md §13 is run on the full
         // synthetic series rather than inferred from phi.
-        var chain = new ClearSkyIndexChain(SeasonalModel(), persistenceOverride: phi);
+        var chain = new ClearSkyIndexChain(SeasonalModel(), phi);
 
         WithinJulyLag1(chain, runs: 2_000, random: new Random(20260731))
             .Should().BeInRange(phi - 0.08, phi + 0.03);
@@ -133,7 +112,7 @@ public class ClearSkyIndexChainTests
     {
         // The path the reports use to show the before-and-after, so it has to be exactly the old
         // behaviour and not merely a weak version of the new one.
-        var chain = new ClearSkyIndexChain(SeasonalModel(), persistenceOverride: 0.0);
+        var chain = new ClearSkyIndexChain(SeasonalModel(), 0.0);
 
         WithinJulyLag1(chain, runs: 2_000, random: new Random(11))
             .Should().BeApproximately(0.0, 0.02);
@@ -151,7 +130,7 @@ public class ClearSkyIndexChainTests
         // each pair sit in July, so the marginal is constant and the correlation measured here is
         // the chain's alone, with no seasonal component mixed in.
         var model = SeasonalModel();
-        var chain = new ClearSkyIndexChain(model, persistenceOverride: 0.7);
+        var chain = new ClearSkyIndexChain(model, 0.7);
         var random = new Random(12);
         var start = new DateOnly(2000, 7, 1);
 
@@ -190,7 +169,7 @@ public class ClearSkyIndexChainTests
     public void Reset_starts_a_fresh_run_rather_than_carrying_yesterday_forward()
     {
         var model = SeasonalModel();
-        var chain = new ClearSkyIndexChain(model, persistenceOverride: 0.9);
+        var chain = new ClearSkyIndexChain(model, 0.9);
         var start = new DateOnly(2000, 7, 1);
 
         var first = Run(chain, start, 50, new Random(5));
@@ -214,9 +193,9 @@ public class ClearSkyIndexChainTests
     {
         var model = SeasonalModel();
 
-        FluentActions.Invoking(() => new ClearSkyIndexChain(model, persistenceOverride: 1.0))
+        FluentActions.Invoking(() => new ClearSkyIndexChain(model, 1.0))
             .Should().Throw<ArgumentOutOfRangeException>();
-        FluentActions.Invoking(() => new ClearSkyIndexChain(model, persistenceOverride: -0.2))
+        FluentActions.Invoking(() => new ClearSkyIndexChain(model, -0.2))
             .Should().Throw<ArgumentOutOfRangeException>();
     }
 }

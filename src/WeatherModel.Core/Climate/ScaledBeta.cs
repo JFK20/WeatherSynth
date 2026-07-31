@@ -18,6 +18,12 @@ namespace WeatherModel.Climate
     /// </summary>
     public sealed class ScaledBeta
     {
+        // log B(alpha, beta) is a constant of the distribution and both Density and
+        // CumulativeProbability need it. Quantile calls those two ~7 times each per solve, so
+        // recomputing it there would be three LogGamma evaluations per iteration for a number
+        // that cannot change.
+        private readonly double _logBeta;
+
         /// <summary>Shape parameter towards the low (overcast) end.</summary>
         public double Alpha { get; }
 
@@ -44,6 +50,7 @@ namespace WeatherModel.Climate
             Beta = beta;
             Scale = scale;
             SampleCount = sampleCount;
+            _logBeta = LogBeta(alpha, beta);
         }
 
         /// <summary>Distribution mean, in the scaled units (i.e. clear-sky index, not [0,1]).</summary>
@@ -143,7 +150,7 @@ namespace WeatherModel.Climate
 
             double logDensity = (Alpha - 1.0) * Math.Log(u)
                                 + (Beta - 1.0) * Math.Log(1.0 - u)
-                                - LogBeta(Alpha, Beta);
+                                - _logBeta;
 
             return Math.Exp(logDensity) / Scale;
         }
@@ -162,7 +169,7 @@ namespace WeatherModel.Climate
             if (u <= 0.0) return 0.0;
             if (u >= 1.0) return 1.0;
 
-            double front = Math.Exp(Alpha * Math.Log(u) + Beta * Math.Log(1.0 - u) - LogBeta(Alpha, Beta));
+            double front = Math.Exp(Alpha * Math.Log(u) + Beta * Math.Log(1.0 - u) - _logBeta);
 
             // The continued fraction converges quickly only on one side of the mode; the
             // symmetry relation I(u; a, b) = 1 - I(1-u; b, a) covers the other.
@@ -324,15 +331,17 @@ namespace WeatherModel.Climate
 
         private static double LogBeta(double a, double b) => LogGamma(a) + LogGamma(b) - LogGamma(a + b);
 
+        private static readonly double[] LanczosCoefficients =
+        {
+            0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+            771.32342877765313, -176.61502916214059, 12.507343278686905,
+            -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+        };
+
         /// <summary>Lanczos approximation, g = 7, n = 9. Accurate to ~15 significant digits.</summary>
         private static double LogGamma(double x)
         {
-            double[] coefficients =
-            {
-                0.99999999999980993, 676.5203681218851, -1259.1392167224028,
-                771.32342877765313, -176.61502916214059, 12.507343278686905,
-                -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
-            };
+            double[] coefficients = LanczosCoefficients;
 
             if (x < 0.5)
             {

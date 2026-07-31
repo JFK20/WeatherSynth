@@ -157,20 +157,12 @@ public class ScaledBetaTests
         var random = new Random(99);
 
         const int draws = 50_000;
-        var sorted = Enumerable.Range(0, draws)
+        var values = Enumerable.Range(0, draws)
             .Select(_ => distribution.Quantile(random.NextDouble()))
-            .OrderBy(v => v)
             .ToList();
 
-        double worst = 0.0;
-        for (int i = 0; i < draws; i++)
-        {
-            double fitted = distribution.CumulativeProbability(sorted[i]);
-            worst = Math.Max(worst, Math.Abs((i + 1.0) / draws - fitted));
-            worst = Math.Max(worst, Math.Abs(fitted - (double)i / draws));
-        }
-
-        worst.Should().BeLessThan(1.36 / Math.Sqrt(draws));
+        ClimateFixtures.KolmogorovSmirnov(values, distribution)
+            .Should().BeLessThan(1.36 / Math.Sqrt(draws));
     }
 
     [Fact]
@@ -216,28 +208,10 @@ public class ClearSkyIndexModelTests
 {
     /// <summary>
     /// A synthetic record with a deliberate seasonal signal: dark winters, clear summers.
+    /// Shared with the chain suite, which asserts that persistence leaves these marginals alone.
     /// </summary>
-    private static List<DailyClearness> SeasonalSeries(int years = 10)
-    {
-        var random = new Random(4242);
-        var series = new List<DailyClearness>();
-
-        for (var date = new DateOnly(2010, 1, 1); date.Year < 2010 + years; date = date.AddDays(1))
-        {
-            double index = SeasonalShape(date).Sample(random);
-            series.Add(new DailyClearness(date, index * 5000.0, 5000.0, 8000.0));
-        }
-
-        return series;
-    }
-
-    /// <summary>The seasonal shapes the series above is built from, month by month.</summary>
-    private static ScaledBeta SeasonalShape(DateOnly date)
-    {
-        // Peaks in July, troughs in January.
-        double seasonal = 0.55 + 0.20 * Math.Cos((date.DayOfYear - 196) / 365.25 * 2.0 * Math.PI);
-        return new ScaledBeta(seasonal * 8.0, (1.0 - seasonal) * 8.0, 1.25);
-    }
+    private static List<DailyClearness> SeasonalSeries(int years = 10) =>
+        ClimateFixtures.SeasonalSeries(years);
 
     /// <summary>
     /// The same seasonal record, but with days generated through a latent AR(1) at a known phi.
@@ -255,7 +229,7 @@ public class ClearSkyIndexModelTests
         {
             latent = phi * latent + Math.Sqrt(1.0 - phi * phi) * Gaussian.Sample(random);
 
-            double index = SeasonalShape(date).Quantile(Gaussian.Cdf(latent));
+            double index = ClimateFixtures.SeasonalShape(date).Quantile(Gaussian.Cdf(latent));
             series.Add(new DailyClearness(date, index * 5000.0, 5000.0, 8000.0));
         }
 
@@ -272,7 +246,7 @@ public class ClearSkyIndexModelTests
         // The estimator normalises each day against its own month's fitted CDF, so the seasonal
         // cycle drops out and what is left is weather persistence alone. If this ever returned
         // something closer to the raw lag-1 of the index, the season would be counted twice:
-        // once here and again in the twelve monthly marginals. See knowledge.md §12.
+        // once here and again in the twelve monthly marginals. See knowledge.md §13.
         var model = ClearSkyIndexModel.Fit(PersistentSeries(phi));
 
         model.Persistence.Should().BeApproximately(phi, 0.03);
@@ -285,10 +259,11 @@ public class ClearSkyIndexModelTests
         // exists to avoid: the raw lag-1 carries the seasonal cycle, which the twelve monthly
         // marginals re-supply downstream, so fitting phi against it would count the season twice.
         //
-        // Which of the two is larger depends on the site. This fixture swings from 0.35 to 0.75
-        // across the year, far wider than Bochum, so the seasonal contribution dominates and the
-        // raw figure runs above phi. At Bochum the flattening by the Beta shapes wins instead and
-        // the raw figure is 0.437, below phi (knowledge.md §12). Only the gap is universal.
+        // Which of the two is larger depends on the site, so only the gap is universal. This
+        // fixture swings from 0.35 to 0.75 across the year, so the seasonal contribution is large
+        // and the raw figure runs above phi. Bochum runs the same way for the same reason but by
+        // less: raw 0.437 against phi 0.353, of which 0.137 is season (knowledge.md §13). A site
+        // with a weak swing and strongly shaped Betas would go the other way.
         var series = PersistentSeries(phi: 0.55);
         var model = ClearSkyIndexModel.Fit(series);
 
