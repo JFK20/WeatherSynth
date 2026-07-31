@@ -90,31 +90,53 @@ public static class IndexFitReport
     private static void Persistence(
         IReadOnlyList<DailyClearness> series, ClearSkyIndexModel model, DwdStation station)
     {
-        Console.WriteLine("=== What the fitted distribution still gets wrong ===");
+        Console.WriteLine("=== Does the generator reproduce cloud persistence? ===");
 
         double observed = IndexSeriesStatistics.Lag1Autocorrelation(
             series.Select(d => (d.Date, d.ClearSkyIndex)));
 
-        var generator = new SyntheticSolarGenerator(model, Ceiling(station));
-        var random = new Random(20260731);
-        var synthetic = generator
-            .Generate(series[0].Date, series[0].Date.AddYears(15), random)
+        var start = series[0].Date;
+        var end = start.AddYears(15);
+
+        // Two runs from the same seed, differing only in phi. The phi = 0 run is exactly what
+        // this model produced before the persistence layer existed, so the two lines below are a
+        // genuine before-and-after rather than a remembered number.
+        var independent = new SyntheticSolarGenerator(model, Ceiling(station), persistenceOverride: 0.0)
+            .Generate(start, end, new Random(20260731))
             .ToList();
 
+        var synthetic = new SyntheticSolarGenerator(model, Ceiling(station))
+            .Generate(start, end, new Random(20260731))
+            .ToList();
+
+        double sampledIndependent = IndexSeriesStatistics.Lag1Autocorrelation(
+            independent.Select(d => (d.Date, d.ClearSkyIndex)));
         double sampled = IndexSeriesStatistics.Lag1Autocorrelation(
             synthetic.Select(d => (d.Date, d.ClearSkyIndex)));
 
-        Console.WriteLine($"  Lag-1 autocorrelation, measured:  {observed:F3}");
-        Console.WriteLine($"  Lag-1 autocorrelation, synthetic: {sampled:F3}");
+        Console.WriteLine($"  Lag-1 autocorrelation, measured:            {observed:F3}");
+        Console.WriteLine($"  Lag-1 autocorrelation, independent draws:   {sampledIndependent:F3}");
+        Console.WriteLine($"  Lag-1 autocorrelation, with AR(1):          {sampled:F3}");
+        Console.WriteLine($"  Fitted persistence (latent phi):            {model.Persistence:F3}");
         Console.WriteLine();
-        Console.WriteLine("  The synthetic figure is not zero, and that is worth understanding: draws");
-        Console.WriteLine("  within a month are independent, so all of it comes from the seasonal cycle");
-        Console.WriteLine("  alone - consecutive days share a monthly mean, and those means run from");
-        Console.WriteLine("  0.40 in December to 0.70 in August. That seasonal floor is the whole of what");
-        Console.WriteLine($"  this model reproduces, leaving {observed - sampled:F3} of genuine weather");
-        Console.WriteLine("  persistence unaccounted for: real cloudy spells cluster, model ones scatter.");
-        Console.WriteLine("  Histograms match, sequences do not. This is the gap the Markov chain in the");
-        Console.WriteLine("  next open item exists to close.");
+        Console.WriteLine("  The independent figure is not zero, and that is worth understanding: those");
+        Console.WriteLine("  draws are independent within a month, so all of it comes from the seasonal");
+        Console.WriteLine("  cycle alone - consecutive days share a monthly mean, and those means run");
+        Console.WriteLine("  from 0.40 in December to 0.70 in August. That seasonal floor was the whole");
+        Console.WriteLine("  of what the model reproduced before the AR(1) term; the rest is genuine");
+        Console.WriteLine("  weather persistence, and real cloudy spells cluster where model ones used");
+        Console.WriteLine("  to scatter.");
+        Console.WriteLine();
+        Console.WriteLine("  Phi is smaller than the measured lag-1 rather than equal to it, and that is");
+        Console.WriteLine("  the point: it lives in a different space. Each day is mapped through its own");
+        Console.WriteLine("  month's fitted CDF and then through the inverse normal, which removes the");
+        Console.WriteLine("  seasonal cycle - so phi is weather persistence with the season taken out,");
+        Console.WriteLine("  and the twelve monthly marginals put the season back downstream. Fitting");
+        Console.WriteLine("  phi against the 0.437 directly would count the seasonal contribution twice.");
+        Console.WriteLine();
+        Console.WriteLine("  The KS column above is the check that this cost nothing: reordering days");
+        Console.WriteLine("  through a copula leaves each month's marginal exactly as it was fitted, so");
+        Console.WriteLine("  those numbers must not have moved.");
         Console.WriteLine();
 
         Console.WriteLine("=== Synthetic annual totals against measured ===");

@@ -213,6 +213,57 @@ namespace WeatherModel.Climate
         }
 
         /// <summary>
+        /// The inverse of <see cref="CumulativeProbability"/>: the index value this distribution
+        /// falls below with probability <paramref name="p"/>.
+        ///
+        /// <para>This is what turns a uniform into a draw with this exact marginal, which is how
+        /// <see cref="ClearSkyIndexChain"/> injects day-to-day persistence without disturbing the
+        /// fitted shape. <see cref="Sample"/> remains the right call for an independent draw -
+        /// it is exact where this is iterative.</para>
+        ///
+        /// <para>Newton on the CDF, with the bracket kept on both sides and a bisection step
+        /// taken whenever Newton would leave it. The safeguard is not decoration: the overcast
+        /// winter months fit alpha below 1, where <see cref="Density"/> diverges at zero and an
+        /// unguarded Newton step walks straight off the support.</para>
+        /// </summary>
+        public double Quantile(double p)
+        {
+            if (double.IsNaN(p) || p < 0.0 || p > 1.0)
+                throw new ArgumentOutOfRangeException(nameof(p), p, "Probability must be in [0, 1].");
+
+            if (p <= 0.0) return 0.0;
+            if (p >= 1.0) return Scale;
+
+            double lower = 0.0;
+            double upper = Scale;
+            double x = Mean;
+
+            for (int i = 0; i < 200; i++)
+            {
+                double error = CumulativeProbability(x) - p;
+
+                // Every evaluation tightens the bracket, so the bisection fallback below always
+                // has somewhere smaller to go even when Newton is useless.
+                if (error > 0.0) upper = x; else lower = x;
+
+                if (Math.Abs(error) < 1e-15 || upper - lower < 1e-16 * Scale)
+                    break;
+
+                double density = Density(x);
+                double next = density > 0.0 && !double.IsInfinity(density)
+                    ? x - error / density
+                    : double.NaN;
+
+                if (!(next > lower && next < upper))
+                    next = 0.5 * (lower + upper);
+
+                x = next;
+            }
+
+            return x;
+        }
+
+        /// <summary>
         /// Draws one value from the distribution, in the scaled units.
         ///
         /// <para>Uses the ratio of two Gamma draws, which is exact rather than an inverse-CDF
@@ -254,7 +305,7 @@ namespace WeatherModel.Climate
                 double x, v;
                 do
                 {
-                    x = SampleStandardNormal(random);
+                    x = Gaussian.Sample(random);
                     v = 1.0 + c * x;
                 } while (v <= 0.0);
 
@@ -269,14 +320,6 @@ namespace WeatherModel.Climate
                 if (u > 0.0 && Math.Log(u) < 0.5 * xSquared + d * (1.0 - v + Math.Log(v)))
                     return d * v;
             }
-        }
-
-        private static double SampleStandardNormal(Random random)
-        {
-            // Box-Muller. NextDouble() can return exactly 0, which Log would send to -infinity.
-            double u1 = 1.0 - random.NextDouble();
-            double u2 = random.NextDouble();
-            return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
         }
 
         private static double LogBeta(double a, double b) => LogGamma(a) + LogGamma(b) - LogGamma(a + b);

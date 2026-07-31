@@ -35,13 +35,18 @@ public static class VisualizationExport
 
         Console.WriteLine($"Fitted {series.Count:N0} days. Generating a matching synthetic record ...");
 
-        var generator = new SyntheticSolarGenerator(model, IndexFitReport.Ceiling(station));
-        var random = new Random(20260731);
-        var synthetic = generator
-            .Generate(series[0].Date, series[^1].Date, random)
+        var synthetic = new SyntheticSolarGenerator(model, IndexFitReport.Ceiling(station))
+            .Generate(series[0].Date, series[^1].Date, new Random(20260731))
             .ToList();
 
-        var payload = BuildPayload(series, synthetic, model, station);
+        // The same run with persistence switched off, so the page can show what the AR(1) term
+        // actually bought rather than asserting it.
+        var independent = new SyntheticSolarGenerator(
+                model, IndexFitReport.Ceiling(station), persistenceOverride: 0.0)
+            .Generate(series[0].Date, series[^1].Date, new Random(20260731))
+            .ToList();
+
+        var payload = BuildPayload(series, synthetic, independent, model, station);
 
         string template = File.ReadAllText(templatePath);
         if (!template.Contains(DataPlaceholder, StringComparison.Ordinal))
@@ -66,6 +71,7 @@ public static class VisualizationExport
     private static JsonObject BuildPayload(
         IReadOnlyList<DailyClearness> observed,
         IReadOnlyList<SyntheticSolarDay> synthetic,
+        IReadOnlyList<SyntheticSolarDay> independent,
         ClearSkyIndexModel model,
         DwdStation station)
     {
@@ -75,6 +81,8 @@ public static class VisualizationExport
             observed.Select(d => (d.Date, d.ClearSkyIndex)));
         double syntheticAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(
             synthetic.Select(d => (d.Date, d.ClearSkyIndex)));
+        double independentAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(
+            independent.Select(d => (d.Date, d.ClearSkyIndex)));
 
         return new JsonObject
         {
@@ -87,7 +95,9 @@ public static class VisualizationExport
             ["autocorrelation"] = new JsonObject
             {
                 ["observed"] = Round(observedAutocorrelation, 4),
-                ["synthetic"] = Round(syntheticAutocorrelation, 4)
+                ["synthetic"] = Round(syntheticAutocorrelation, 4),
+                ["independent"] = Round(independentAutocorrelation, 4),
+                ["phi"] = Round(model.Persistence, 4)
             },
             ["annualKWh"] = new JsonObject
             {

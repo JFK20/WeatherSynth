@@ -220,12 +220,13 @@
   </section>
 
   <section class="card">
-    <h2>What this model still gets wrong</h2>
+    <h2>Does the model remember yesterday?</h2>
     <p class="caption">
       Each day plotted against the day before it. A cloud of points along the diagonal means
-      weather persists; a shapeless blob means each day forgets the last. The measured record
-      persists and the model does not — this is the single clearest statement of what is missing,
-      and the reason a Markov chain is the next step rather than a refinement.
+      weather persists; a shapeless blob means each day forgets the last. The synthetic panel used
+      to be that blob — the histograms matched and the sequences did not. An AR(1) term on a
+      hidden variable now carries the memory across, reordering days without touching the fitted
+      monthly shapes, and the diagonal appears.
     </p>
     <div class="smalls">
       <div class="plot"><svg id="lagMeasured" viewBox="0 0 400 300" role="img" aria-label="Measured clear-sky index today against yesterday"></svg></div>
@@ -656,13 +657,13 @@ function drawLag(svgId, pairs, color, title, correlation) {
 /* ---------- tiles, table, footnote ---------- */
 
 function drawTiles() {
-  const gap = DATA.autocorrelation.observed - DATA.autocorrelation.synthetic;
   const tiles = [
     ["Days fitted", measured.length.toLocaleString(), "", `${DATA.startDate} to ${DATA.endDate}`],
     ["Mean clear-sky index", fmt(monthlyMeansOverall(measured), 3), "", "1.0 would be a permanently cloudless site"],
     ["Annual GHI, measured", Math.round(DATA.annualKWh.observed).toLocaleString(), " kWh/m²",
       `Synthetic: ${Math.round(DATA.annualKWh.synthetic).toLocaleString()} kWh/m² (${(100 * (DATA.annualKWh.synthetic - DATA.annualKWh.observed) / DATA.annualKWh.observed).toFixed(1)}%)`],
-    ["Persistence not captured", fmt(gap, 2), "", `lag-1 r: ${fmt(DATA.autocorrelation.observed, 2)} measured vs ${fmt(DATA.autocorrelation.synthetic, 2)} synthetic`]
+    ["Persistence, lag-1 r", fmt(DATA.autocorrelation.synthetic, 2), "",
+      `${fmt(DATA.autocorrelation.observed, 2)} measured, ${fmt(DATA.autocorrelation.independent, 2)} without the AR(1) term (φ = ${fmt(DATA.autocorrelation.phi, 2)})`]
   ];
 
   document.getElementById("tiles").innerHTML = tiles.map(([label, value, unit, note]) => `

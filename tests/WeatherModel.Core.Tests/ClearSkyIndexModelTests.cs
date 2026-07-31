@@ -125,6 +125,66 @@ public class ScaledBetaTests
         }
     }
 
+    [Theory]
+    // The U-shaped row is the one that matters: with both shapes below 1 the density diverges at
+    // both ends, and an unguarded Newton step from the mean leaves the support on the first
+    // iteration. The 12/3 row is the opposite failure mode, a density so concentrated that the
+    // bracket has to do the early work.
+    [InlineData(4.0, 2.0)]
+    [InlineData(0.5, 0.7)]
+    [InlineData(12.0, 3.0)]
+    [InlineData(0.9, 6.0)]
+    public void Quantile_inverts_the_cumulative_probability(double alpha, double beta)
+    {
+        var distribution = new ScaledBeta(alpha, beta, scale: 1.25);
+
+        foreach (double p in new[] { 1e-6, 0.001, 0.05, 0.25, 0.5, 0.75, 0.95, 0.999, 1.0 - 1e-6 })
+        {
+            double x = distribution.Quantile(p);
+
+            x.Should().BeInRange(0.0, 1.25);
+            distribution.CumulativeProbability(x).Should().BeApproximately(p, 1e-12);
+        }
+    }
+
+    [Fact]
+    public void Quantile_of_a_uniform_reproduces_the_distribution_it_came_from()
+    {
+        // The property the persistence layer depends on: pushing uniforms through the quantile
+        // gives back the marginal exactly, which is what lets the AR(1) reorder days without
+        // disturbing the twelve fitted shapes. Compared by KS against the fit's own CDF.
+        var distribution = new ScaledBeta(alpha: 2.4, beta: 1.7, scale: 1.25);
+        var random = new Random(99);
+
+        const int draws = 50_000;
+        var sorted = Enumerable.Range(0, draws)
+            .Select(_ => distribution.Quantile(random.NextDouble()))
+            .OrderBy(v => v)
+            .ToList();
+
+        double worst = 0.0;
+        for (int i = 0; i < draws; i++)
+        {
+            double fitted = distribution.CumulativeProbability(sorted[i]);
+            worst = Math.Max(worst, Math.Abs((i + 1.0) / draws - fitted));
+            worst = Math.Max(worst, Math.Abs(fitted - (double)i / draws));
+        }
+
+        worst.Should().BeLessThan(1.36 / Math.Sqrt(draws));
+    }
+
+    [Fact]
+    public void Quantile_is_pinned_at_the_ends_of_the_support()
+    {
+        var distribution = new ScaledBeta(3.0, 5.0, scale: 1.25);
+
+        distribution.Quantile(0.0).Should().Be(0.0);
+        distribution.Quantile(1.0).Should().Be(1.25);
+
+        distribution.Invoking(d => d.Quantile(-0.1)).Should().Throw<ArgumentOutOfRangeException>();
+        distribution.Invoking(d => d.Quantile(1.1)).Should().Throw<ArgumentOutOfRangeException>();
+    }
+
     [Fact]
     public void Fit_refuses_values_beyond_the_support_rather_than_clipping_them()
     {
@@ -164,15 +224,79 @@ public class ClearSkyIndexModelTests
 
         for (var date = new DateOnly(2010, 1, 1); date.Year < 2010 + years; date = date.AddDays(1))
         {
-            // Peaks in July, troughs in January.
-            double seasonal = 0.55 + 0.20 * Math.Cos((date.DayOfYear - 196) / 365.25 * 2.0 * Math.PI);
-            var month = new ScaledBeta(seasonal * 8.0, (1.0 - seasonal) * 8.0, 1.25);
-
-            double index = month.Sample(random);
+            double index = SeasonalShape(date).Sample(random);
             series.Add(new DailyClearness(date, index * 5000.0, 5000.0, 8000.0));
         }
 
         return series;
+    }
+
+    /// <summary>The seasonal shapes the series above is built from, month by month.</summary>
+    private static ScaledBeta SeasonalShape(DateOnly date)
+    {
+        // Peaks in July, troughs in January.
+        double seasonal = 0.55 + 0.20 * Math.Cos((date.DayOfYear - 196) / 365.25 * 2.0 * Math.PI);
+        return new ScaledBeta(seasonal * 8.0, (1.0 - seasonal) * 8.0, 1.25);
+    }
+
+    /// <summary>
+    /// The same seasonal record, but with days generated through a latent AR(1) at a known phi.
+    /// Fitting this back is the only way to tell whether the normal-score estimator recovers the
+    /// coefficient it was given rather than some mixture of it and the seasonal cycle.
+    /// </summary>
+    private static List<DailyClearness> PersistentSeries(double phi, int years = 10)
+    {
+        var random = new Random(4242);
+        var series = new List<DailyClearness>();
+
+        double latent = Gaussian.Sample(random);
+
+        for (var date = new DateOnly(2010, 1, 1); date.Year < 2010 + years; date = date.AddDays(1))
+        {
+            latent = phi * latent + Math.Sqrt(1.0 - phi * phi) * Gaussian.Sample(random);
+
+            double index = SeasonalShape(date).Quantile(Gaussian.Cdf(latent));
+            series.Add(new DailyClearness(date, index * 5000.0, 5000.0, 8000.0));
+        }
+
+        return series;
+    }
+
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(0.35)]
+    [InlineData(0.55)]
+    [InlineData(0.8)]
+    public void Fit_recovers_the_persistence_the_record_was_generated_with(double phi)
+    {
+        // The estimator normalises each day against its own month's fitted CDF, so the seasonal
+        // cycle drops out and what is left is weather persistence alone. If this ever returned
+        // something closer to the raw lag-1 of the index, the season would be counted twice:
+        // once here and again in the twelve monthly marginals. See knowledge.md §12.
+        var model = ClearSkyIndexModel.Fit(PersistentSeries(phi));
+
+        model.Persistence.Should().BeApproximately(phi, 0.03);
+    }
+
+    [Fact]
+    public void Persistence_is_measured_on_normal_scores_not_on_the_raw_index()
+    {
+        // These are two different numbers, and conflating them is the trap this whole approach
+        // exists to avoid: the raw lag-1 carries the seasonal cycle, which the twelve monthly
+        // marginals re-supply downstream, so fitting phi against it would count the season twice.
+        //
+        // Which of the two is larger depends on the site. This fixture swings from 0.35 to 0.75
+        // across the year, far wider than Bochum, so the seasonal contribution dominates and the
+        // raw figure runs above phi. At Bochum the flattening by the Beta shapes wins instead and
+        // the raw figure is 0.437, below phi (knowledge.md §12). Only the gap is universal.
+        var series = PersistentSeries(phi: 0.55);
+        var model = ClearSkyIndexModel.Fit(series);
+
+        double raw = IndexSeriesStatistics.Lag1Autocorrelation(
+            series.Select(d => (d.Date, d.ClearSkyIndex)));
+
+        model.Persistence.Should().BeApproximately(0.55, 0.03);
+        Math.Abs(raw - model.Persistence).Should().BeGreaterThan(0.05);
     }
 
     [Fact]
@@ -229,8 +353,8 @@ public class IndexSeriesStatisticsTests
     [Fact]
     public void Independent_days_show_no_persistence()
     {
-        // The baseline the current model sits at, and the reason the Markov chain is the next
-        // open item: i.i.d. sampling cannot produce autocorrelation whatever its histogram is.
+        // The baseline the model sat at before ClearSkyIndexChain, and the reason it was needed:
+        // i.i.d. sampling cannot produce autocorrelation whatever its histogram looks like.
         var random = new Random(11);
         var start = new DateOnly(2020, 1, 1);
 

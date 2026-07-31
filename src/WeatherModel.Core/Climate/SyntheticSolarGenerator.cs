@@ -33,24 +33,44 @@ namespace WeatherModel.Climate
     /// ceiling passed here must be built with the <i>target</i> site's coordinates - that is
     /// what puts the geometry back.</para>
     ///
+    /// <para><b>Order-dependent.</b> The index carries day-to-day persistence
+    /// (<see cref="ClearSkyIndexChain"/>), so <see cref="GenerateDay"/> depends on the call
+    /// before it. Walk dates forwards, and call <see cref="Reset"/> between independent runs.
+    /// <see cref="Generate"/> resets for you.</para>
+    ///
     /// <para><b>Not thread-safe.</b> The underlying solar position calculator memoises per-date
-    /// terms. One generator per thread.</para>
+    /// terms, and the persistence chain carries state. One generator per thread.</para>
     /// </summary>
     public sealed class SyntheticSolarGenerator
     {
-        private readonly ClearSkyIndexModel _model;
+        private readonly ClearSkyIndexChain _chain;
         private readonly DailyClearSkyCalculator _ceiling;
 
         /// <param name="model">Fitted index distribution, from a measured record.</param>
         /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
-        public SyntheticSolarGenerator(ClearSkyIndexModel model, DailyClearSkyCalculator ceiling)
+        /// <param name="persistenceOverride">
+        /// Overrides the fitted persistence. Pass 0 to reproduce independent day-by-day sampling,
+        /// which is what the reports compare against.
+        /// </param>
+        public SyntheticSolarGenerator(
+            ClearSkyIndexModel model,
+            DailyClearSkyCalculator ceiling,
+            double? persistenceOverride = null)
         {
-            _model = model ?? throw new ArgumentNullException(nameof(model));
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
             _ceiling = ceiling ?? throw new ArgumentNullException(nameof(ceiling));
+            _chain = new ClearSkyIndexChain(model, persistenceOverride);
         }
 
+        /// <summary>The AR(1) coefficient the underlying chain is running at.</summary>
+        public double Persistence => _chain.Persistence;
+
+        /// <summary>Starts a fresh run, forgetting the previous day's weather.</summary>
+        public void Reset() => _chain.Reset();
+
         /// <summary>
-        /// Generates one synthetic day.
+        /// Generates one synthetic day, continuing on from the day generated before it.
         ///
         /// <para>No clamping is applied. The pipeline in knowledge.md §2 calls for a final clamp
         /// to [0, clear-sky] as a safety net, but the Beta's support already bounds the draw to
@@ -61,7 +81,7 @@ namespace WeatherModel.Climate
         {
             if (random is null) throw new ArgumentNullException(nameof(random));
 
-            double index = _model.Sample(date.Month, random);
+            double index = _chain.Next(date, random);
             double clearSky = _ceiling.ForDate(date.ToDateTime(TimeOnly.MinValue)).GhiWhPerM2;
 
             return new SyntheticSolarDay(date, index, clearSky, index * clearSky);
@@ -72,12 +92,17 @@ namespace WeatherModel.Climate
         ///
         /// <para>Streams, so a long run does not materialise in memory at once. Each day costs
         /// one clear-sky integration, which dominates the sampling by a wide margin.</para>
+        ///
+        /// <para>The persistence chain is reset when enumeration begins, so a run depends only on
+        /// the seed it was given and not on whatever this generator produced before.</para>
         /// </summary>
         public IEnumerable<SyntheticSolarDay> Generate(DateOnly start, DateOnly endInclusive, Random random)
         {
             if (random is null) throw new ArgumentNullException(nameof(random));
             if (endInclusive < start)
                 throw new ArgumentException("End must not precede start.", nameof(endInclusive));
+
+            Reset();
 
             for (var date = start; date <= endInclusive; date = date.AddDays(1))
                 yield return GenerateDay(date, random);
