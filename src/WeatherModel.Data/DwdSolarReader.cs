@@ -37,7 +37,7 @@ public sealed record DwdSolarInterval
     public required DateTime WozEnd { get; init; }
 
     /// <summary>
-    /// Midpoint of the interval in true solar time — always a half hour past.
+    /// Midpoint of the interval in true solar time always a half hour past.
     ///
     /// Because this is <i>true</i> solar time, the sun's hour angle here is known exactly
     /// without any equation-of-time calculation: it is <c>(hours − 12) × 15°</c>. That makes
@@ -62,7 +62,7 @@ public sealed record DwdSolarInterval
 
     /// <summary>
     /// Solar zenith angle at the interval midpoint, degrees, as reported by DWD. This is the
-    /// true (geometric) zenith — it carries no refraction correction.
+    /// true (geometric) zenith it carries no refraction correction.
     /// </summary>
     public required double ZenithDegrees { get; init; }
 
@@ -128,7 +128,7 @@ public static class DwdSolarReader
         var wozEnd = ParseTimestamp(columns[8]);
 
         // The interval ending at WOZ midnight belongs to the previous solar day. Those hours
-        // are always dark, so this never moves energy between days — but keeping it correct
+        // are always dark, so this never moves energy between days but keeping it correct
         // means a WOZ day holds exactly 24 intervals, which the completeness check relies on.
         var wozDate = DateOnly.FromDateTime(wozEnd.AddTicks(-1));
 

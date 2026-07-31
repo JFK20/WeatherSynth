@@ -22,7 +22,7 @@ public static class DwdStations
     /// <para><b>These coordinates are fitted from the file itself, not taken from a gazetteer.</b>
     /// Minimising the residual against the 151,871 ZENIT values puts the station at
     /// 51.4445°N 7.3852°E (RMSE 0.033°), roughly 0.19° east of where a nominal "Bochum"
-    /// position would put it — about 13 km. Using the nominal position instead triples the
+    /// position would put it about 13 km. Using the nominal position instead triples the
     /// residual to 0.100°.</para>
     ///
     /// <para>The longitude is corroborated independently of any zenith calculation:

@@ -9,7 +9,7 @@ namespace WeatherModel.Climate
     /// <para>This is the quantity the stochastic model is built on, rather than irradiance
     /// itself. Irradiance has a hard ceiling that varies enormously with season and latitude;
     /// dividing it out leaves a bounded number that means "how cloudy was it" and nothing
-    /// else — which is what makes a single distribution fittable across the year.</para>
+    /// else which is what makes a single distribution fittable across the year.</para>
     /// </summary>
     /// <param name="Date">The day, in true solar time where the source data is solar-aligned.</param>
     /// <param name="ObservedWhPerM2">Measured global horizontal irradiation for the day.</param>
@@ -18,7 +18,7 @@ namespace WeatherModel.Climate
     /// covers so the ratio is matched rather than approximate.
     /// </param>
     /// <param name="ExtraterrestrialWhPerM2">
-    /// Irradiation that would arrive on the horizontal with no atmosphere — the denominator of
+    /// Irradiation that would arrive on the horizontal with no atmosphere the denominator of
     /// the classical clearness index.
     /// </param>
     public readonly record struct DailyClearness(
@@ -55,7 +55,7 @@ namespace WeatherModel.Climate
         ///
         /// <para>Kept for cross-checking rather than modelling. It retains a seasonal signal
         /// that the clear-sky index removes, since clear-sky transmittance itself varies with
-        /// sun elevation — which is precisely the structure the model is trying to divide out.</para>
+        /// sun elevation which is precisely the structure the model is trying to divide out.</para>
         /// </summary>
         public double ClearnessIndex =>
             ExtraterrestrialWhPerM2 > 0.0 ? ObservedWhPerM2 / ExtraterrestrialWhPerM2 : double.NaN;

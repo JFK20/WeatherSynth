@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Innovative.SolarCalculator;
 
 namespace WeatherModel.Solar
@@ -8,22 +6,10 @@ namespace WeatherModel.Solar
     /// Computes the sun's zenith angle, correcting a defect in SolarCalculator's declination.
     ///
     /// <para><b>Why this exists.</b> SolarCalculator evaluates <c>SolarDeclination</c> once per
-    /// calendar date and returns the same value for every time of day — querying 2015-03-20 at
+    /// calendar date and returns the same value for every time of day querying 2015-03-20 at
     /// 00:00, 06:00, 12:00 and 18:00 UTC all yield −0.3732°, which is the declination at
     /// midnight. But declination moves about 0.39°/day around the equinoxes, so every
     /// afternoon inherits an error of up to half a day's drift.</para>
-    ///
-    /// <para>Measured against the 151,871 reference zenith angles in the DWD Bochum record,
-    /// the uncorrected library gives an RMSE of 0.178° with a clean annual signature: zero
-    /// at both solstices, ±0.2° at the equinoxes — precisely proportional to dδ/dt. Carried
-    /// through the clear-sky model that is a 1.9% seasonal swing in daily GHI (−1.18% in
-    /// February against +0.73% in October).</para>
-    ///
-    /// <para>That is small in absolute terms, and knowledge.md is right that stochastic Kt
-    /// sampling swamps sub-arcminute position accuracy. It is worth correcting anyway because
-    /// it is <i>seasonal and systematic</i>: it contaminates the exact axis the clearness index
-    /// is binned on, and would masquerade as a real seasonal signal in the fitted
-    /// distributions.</para>
     ///
     /// <para><b>The correction.</b> Take the library's declination and equation of time at the
     /// surrounding midnights and interpolate to the requested instant, then rebuild the zenith
@@ -94,7 +80,7 @@ namespace WeatherModel.Solar
 
             var solarTimes = new SolarTimes(new DateTimeOffset(date, TimeSpan.Zero), _latitude, _longitude);
 
-            // Read .Radians rather than .Degrees — on the Angle type, .Degrees is only the
+            // Read .Radians rather than .Degrees on the Angle type, .Degrees is only the
             // whole-degree component, not the total angle.
             var terms = new DayTerms(
                 (double)solarTimes.SolarDeclination.Radians * RadToDeg,
