@@ -67,5 +67,5 @@ Data Center and is used under the [CC BY 4.0](https://creativecommons.org/licens
 
 ## License
 
-The code in this repository is licensed under the [MIT License](LICENSE). This does not cover
+The code in this repository is licensed under the [GNU AFFERO GENERAL PUBLIC LICENSE](LICENSE). This does not cover
 the DWD data, which is licensed separately as noted above.
