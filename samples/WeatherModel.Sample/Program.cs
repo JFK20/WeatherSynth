@@ -59,6 +59,10 @@ internal static class Program
                 ClearSkyCalibration.Run(days, station);
                 break;
 
+            case "fit":
+                IndexFitReport.Run(days, station);
+                break;
+
             case "impact":
                 ZenithImpact.Run(days, station);
                 break;
