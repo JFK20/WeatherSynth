@@ -1,3 +1,5 @@
+using WeatherModel.Solar;
+
 namespace WeatherModel.Data;
 
 /// <summary>Location metadata for a DWD measurement station.</summary>
@@ -11,7 +13,16 @@ public sealed record DwdStation(
     string Name,
     double LatitudeDegrees,
     double LongitudeDegrees,
-    double AltitudeMeters);
+    double AltitudeMeters)
+{
+    /// <summary>
+    /// This station as a generation site.
+    ///
+    /// <para>UTC, not local time: DWD timestamps are solar-aligned and the record's days are
+    /// bounded in UTC, so a ceiling matched to those measurements has to be too.</para>
+    /// </summary>
+    public SolarSite ToSite() => new(LatitudeDegrees, LongitudeDegrees, AltitudeMeters, TimeZoneInfo.Utc);
+}
 
 /// <summary>Stations this project has data for.</summary>
 public static class DwdStations

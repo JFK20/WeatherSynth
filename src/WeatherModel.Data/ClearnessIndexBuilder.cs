@@ -25,13 +25,10 @@ public static class ClearnessIndexBuilder
         DwdStation station,
         Func<DateTime, double>? turbidityProvider = null)
     {
-        var calculator = new DailyClearSkyCalculator(
-            station.LatitudeDegrees,
-            station.LongitudeDegrees,
-            station.AltitudeMeters,
-            TimeZoneInfo.Utc,
-            step: TimeSpan.FromMinutes(15),
-            turbidityProvider: turbidityProvider);
+        // The same ceiling the generator will divide back out later. Built through the site so
+        // there is one definition of it: fitting against a ceiling the generator does not
+        // reproduce is the one error in this pipeline that leaves no trace in the numbers.
+        var calculator = station.ToSite().CreateCeiling(turbidityProvider: turbidityProvider);
 
         var series = new List<DailyClearness>();
 

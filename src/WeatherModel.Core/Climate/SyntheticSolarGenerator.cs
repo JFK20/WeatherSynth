@@ -110,6 +110,41 @@ namespace WeatherModel.Climate
             return Iterate(start, endInclusive, random);
         }
 
+        /// <summary>
+        /// Generates one calendar year at daily resolution, 1 January to 31 December inclusive.
+        ///
+        /// <para>366 days in a leap year, and that is deliberate rather than an accident of
+        /// <see cref="DateOnly"/> arithmetic: 29 February is a real day with a real ceiling, and
+        /// dropping it would put a one-day hole in the persistence chain for no gain.</para>
+        ///
+        /// <para>The year is a label on the seasonal cycle, not a claim about that particular
+        /// year. Two runs over different years with the same seed differ only in their ceilings -
+        /// the weather is drawn fresh either way. Same contract as
+        /// <see cref="Generate"/>: streaming, and reset before the first day.</para>
+        /// </summary>
+        /// <param name="year">Calendar year to generate.</param>
+        /// <param name="random">Source of randomness; seed it to make a run reproducible.</param>
+        public IEnumerable<SyntheticSolarDay> GenerateYear(int year, Random random) =>
+            Generate(new DateOnly(year, 1, 1), new DateOnly(year, 12, 31), random);
+
+        /// <summary>
+        /// Generates a whole year from a seed, with its monthly and annual totals - the shape a
+        /// caller asking "give me a plausible year for this site" actually wants.
+        ///
+        /// <para>The seed is the argument rather than a <see cref="Random"/> because it travels:
+        /// it is carried on the result, so the same year can be re-requested later and come back
+        /// identical. Passing a shared <see cref="Random"/> could not promise that.</para>
+        /// </summary>
+        /// <param name="year">Calendar year to generate.</param>
+        /// <param name="seed">Seed for the run. The same seed and site reproduce it exactly.</param>
+        public SyntheticSolarYear GenerateYear(int year, int seed)
+        {
+            var days = new List<SyntheticSolarDay>(366);
+            days.AddRange(GenerateYear(year, new Random(seed)));
+
+            return new SyntheticSolarYear(year, seed, days);
+        }
+
         private IEnumerable<SyntheticSolarDay> Iterate(
             DateOnly start, DateOnly endInclusive, Random random)
         {
