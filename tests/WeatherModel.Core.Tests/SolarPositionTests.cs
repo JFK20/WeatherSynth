@@ -13,7 +13,7 @@ public class SolarPositionTests
         // Regression guard. SolarCalculator's own SolarDeclination returns one value per
         // calendar date regardless of time of day; around the equinoxes the true declination
         // moves about 0.39°/day, so a constant value costs up to half a day's drift every
-        // afternoon. SolarPositionCalculator interpolates to fix that — if this ever goes back
+        // afternoon. SolarPositionCalculator interpolates to fix that if this ever goes back
         // to being constant, the fix has been lost.
         var calculator = new SolarPositionCalculator(51.4445, 7.3852);
 
@@ -31,7 +31,7 @@ public class SolarPositionTests
     public void Refraction_correction_is_about_half_a_degree_at_the_horizon()
     {
         // knowledge.md §7 quotes ~0.57° "at the horizon", which needs pinning down: that is the
-        // correction at −0.575° GEOMETRIC elevation — the point where refraction has just lifted
+        // correction at −0.575° GEOMETRIC elevation the point where refraction has just lifted
         // the sun onto the visible horizon, so it is self-consistent. At 0° geometric elevation
         // the sun is already above the apparent horizon and the correction is smaller, 0.482°.
         DailyClearSkyCalculator.RefractionCorrectionDegrees(-0.575).Should().BeApproximately(0.575, 0.005);
@@ -54,8 +54,8 @@ public class SolarPositionTests
 
     /// <summary>
     /// The headline validation: 151,871 independent reference zenith angles from the DWD
-    /// station file. knowledge.md §5 names solar-position errors — degree/radian confusion,
-    /// longitude sign flips, timezone mismatches — as the most expensive bug class here, and
+    /// station file. knowledge.md §5 names solar-position errors degree/radian confusion,
+    /// longitude sign flips, timezone mismatches as the most expensive bug class here, and
     /// this catches all of them at once.
     /// </summary>
     [Fact]

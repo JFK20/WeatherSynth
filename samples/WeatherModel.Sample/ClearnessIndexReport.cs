@@ -141,7 +141,7 @@ public static class ClearnessIndexReport
         double separation = BimodalitySeparation(series);
         Console.WriteLine($"  Deepest valley between two peaks: {separation:P0} below the lower peak.");
         Console.WriteLine(separation >= 0.25
-            ? "  Clearly bimodal — natural lobes to anchor Markov states on."
+            ? "  Clearly bimodal: natural lobes to anchor Markov states on."
             : "  NOT clearly bimodal: a broad plateau from ~0.2 to ~0.9 with a rise at the clear end.");
         Console.WriteLine("  Discrete states remain reasonable for capturing persistence, but their");
         Console.WriteLine("  boundaries are a modelling choice, not a feature the data hands over.");

@@ -8,7 +8,7 @@ namespace WeatherModel.Solar
     /// <para>The Linke turbidity factor describes how much a cloudless atmosphere attenuates
     /// direct sunlight relative to a perfectly clean, dry one. TL = 1 is a pure Rayleigh
     /// atmosphere; real mid-latitude values run roughly 2-7, low in winter and high in summer.
-    /// There is no formula for it — it is a lookup, or a fit.</para>
+    /// There is no formula for it. It's a lookup, or a fit.</para>
     /// </summary>
     public sealed class LinkeTurbidityTable
     {
@@ -26,7 +26,7 @@ namespace WeatherModel.Solar
         }
 
         /// <summary>
-        /// Fitted to the DWD Bochum station's own cloudless days — 577 days selected by
+        /// Fitted to the DWD Bochum station's own cloudless days 577 days selected by
         /// sunshine duration at least 95% of possible and diffuse fraction below 0.30,
         /// spanning 2009-2026.
         ///
@@ -34,7 +34,7 @@ namespace WeatherModel.Solar
         /// local fit absorbs the actual aerosol climate, and also quietly absorbs error in the
         /// assumed station altitude, since both act on the clear-sky magnitude.</para>
         ///
-        /// <para>Fitted with the Perez enhancement ON — the two are not independent, and these
+        /// <para>Fitted with the Perez enhancement ON the two are not independent, and these
         /// numbers are not valid for the other variant. Fitting with it off drives December to
         /// 1.44 and January to 1.95, below the physical floor, which is part of why the
         /// enhancement is kept. See <see cref="ClearSkyIneichen.Estimate"/>.</para>
@@ -65,7 +65,7 @@ namespace WeatherModel.Solar
 
         /// <summary>
         /// The original hand-entered Central/Western Europe climatology. Kept for comparison
-        /// only — it is not site data and was never fitted to anything.
+        /// only it is not site data and was never fitted to anything.
         /// </summary>
         public static LinkeTurbidityTable CentralEuropePlaceholder { get; } = new(new[]
         {

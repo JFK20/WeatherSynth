@@ -71,11 +71,6 @@ namespace WeatherModel.Solar
         /// </param>
         /// <param name="perezEnhancement">
         /// Whether to apply the <c>exp(0.01 · airmass^1.8)</c> Perez enhancement term.
-        ///
-        /// pvlib defaults this to <c>false</c>; this port has historically applied it
-        /// unconditionally. The effect grows with air mass, so the choice matters most for
-        /// winter daily integrals at high latitude. It is exposed here so both variants can be
-        /// fitted against measured clear-sky days and compared — see knowledge.md open items.
         /// </param>
         public static ClearSkyIrradiance Estimate(
             double apparentZenithDegrees,

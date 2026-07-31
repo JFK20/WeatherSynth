@@ -18,7 +18,7 @@ public static class ClearnessIndexBuilder
     /// day went missing.</para>
     /// </summary>
     /// <param name="days">Station days. Filter to complete ones before calling unless you want partials.</param>
-    /// <param name="station">Station location — the ceiling must be computed where the sensor is.</param>
+    /// <param name="station">Station location the ceiling must be computed where the sensor is.</param>
     /// <param name="turbidityProvider">Optional turbidity override; defaults to the site fit.</param>
     public static IReadOnlyList<DailyClearness> Build(
         IEnumerable<DwdSolarDay> days,

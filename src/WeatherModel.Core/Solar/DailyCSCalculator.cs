@@ -258,7 +258,7 @@ namespace WeatherModel.Solar
 
         /// <summary>
         /// Integrates extraterrestrial irradiance on a horizontal surface over an interval, in
-        /// Wh/m² — the energy that would arrive with no atmosphere at all.
+        /// Wh/m² the energy that would arrive with no atmosphere at all.
         ///
         /// <para>This is the denominator of the <i>classical</i> clearness index, as distinct
         /// from the clear-sky index which divides by the modelled clear-sky ceiling. The two are
@@ -298,7 +298,7 @@ namespace WeatherModel.Solar
 
         /// <summary>
         /// Steps across an interval, yielding each sample with the number of hours it stands
-        /// for. Samples are taken at the MIDPOINT of each step (midpoint rule) — noticeably
+        /// for. Samples are taken at the MIDPOINT of each step (midpoint rule) noticeably
         /// more accurate than sampling at step boundaries, especially around sunrise and
         /// sunset where irradiance changes fastest. A final partial step is weighted by its
         /// true duration, so the interval need not be a whole multiple of the step.
