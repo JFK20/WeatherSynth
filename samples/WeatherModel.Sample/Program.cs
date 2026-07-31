@@ -63,6 +63,9 @@ internal static class Program
                 IndexFitReport.Run(days, station);
                 break;
 
+            case "viz":
+                return VisualizationExport.Run(days, station);
+
             case "impact":
                 ZenithImpact.Run(days, station);
                 break;
@@ -73,7 +76,8 @@ internal static class Program
 
             default:
                 Console.Error.WriteLine(
-                    $"Unknown command '{command}'. Try: summary, zenith, fitcoords, sanity");
+                    $"Unknown command '{command}'. Try: summary, zenith, decompose, kt, " +
+                    "calibrate, fit, viz, impact, fitcoords, sanity");
                 return 1;
         }
 

@@ -68,17 +68,48 @@ public class ScaledBetaTests
             .BeApproximately(distribution.Variance * draws.Count, distribution.Variance * draws.Count * 0.02);
     }
 
+    // Reference values from scipy.stats.beta.cdf. An outside reference rather than this
+    // library's own density: the shapes below 1 put a singularity at the origin, and numerical
+    // integration of the density is the less accurate of the two there, so a self-consistency
+    // check would be testing the quadrature rather than the distribution.
     [Theory]
-    [InlineData(4.0, 2.0)]
-    [InlineData(0.5, 0.7)]
-    [InlineData(12.0, 3.0)]
-    public void Cumulative_probability_agrees_with_the_integral_of_the_density(double alpha, double beta)
+    // Both branches of the symmetry relation, and a U-shaped case with both shapes below 1.
+    [InlineData(4.0, 2.0, 0.10, 0.00046)]
+    [InlineData(4.0, 2.0, 0.50, 0.1875)]
+    [InlineData(4.0, 2.0, 0.75, 0.6328125)]
+    [InlineData(0.5, 0.7, 0.10, 0.255025266685)]
+    [InlineData(0.5, 0.7, 0.50, 0.600364232133)]
+    [InlineData(0.5, 0.7, 0.90, 0.883788956771)]
+    [InlineData(12.0, 3.0, 0.25, 0.0000032112)]
+    [InlineData(12.0, 3.0, 0.75, 0.281127624214)]
+    [InlineData(12.0, 3.0, 0.90, 0.841640018713)]
+    public void Cumulative_probability_matches_an_external_reference(
+        double alpha, double beta, double unitPoint, double expected)
     {
-        // The continued fraction and the density are independent implementations of the same
-        // distribution, so agreeing to 1e-6 across the range means both are right. The shapes
-        // cover each branch of the symmetry relation, plus the U-shaped case where both
-        // parameters are below 1.
-        var distribution = new ScaledBeta(alpha, beta, scale: 1.25);
+        const double scale = 1.25;
+        var distribution = new ScaledBeta(alpha, beta, scale);
+
+        distribution.CumulativeProbability(unitPoint * scale)
+            .Should().BeApproximately(expected, 1e-9);
+    }
+
+    [Fact]
+    public void Cumulative_probability_is_pinned_at_the_ends_of_the_support()
+    {
+        var distribution = new ScaledBeta(3.0, 5.0, scale: 1.25);
+
+        distribution.CumulativeProbability(0.0).Should().Be(0.0);
+        distribution.CumulativeProbability(-1.0).Should().Be(0.0);
+        distribution.CumulativeProbability(1.25).Should().Be(1.0);
+        distribution.CumulativeProbability(99.0).Should().Be(1.0);
+    }
+
+    [Fact]
+    public void Cumulative_probability_agrees_with_the_integral_of_the_density()
+    {
+        // Where the density is finite, the two are independent routes to the same number and
+        // must agree. This is what ties the continued fraction to the rest of the class.
+        var distribution = new ScaledBeta(alpha: 4.0, beta: 2.0, scale: 1.25);
 
         const int steps = 200_000;
         double width = 1.25 / steps;
@@ -90,12 +121,8 @@ public class ScaledBetaTests
 
             if ((i + 1) % 20_000 == 0)
                 distribution.CumulativeProbability((i + 1) * width)
-                    .Should().BeApproximately(integral, 1e-5);
+                    .Should().BeApproximately(integral, 1e-6);
         }
-
-        distribution.CumulativeProbability(0.0).Should().Be(0.0);
-        distribution.CumulativeProbability(1.25).Should().Be(1.0);
-        distribution.CumulativeProbability(99.0).Should().Be(1.0);
     }
 
     [Fact]

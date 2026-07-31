@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stochastic solar model — fitted clear-sky index</title>
+<style>
+  /* Palette: dataviz reference instance, categorical slots 1-3, validated all-pairs in
+     both modes. Light-mode aqua sits below 3:1 on the surface, so every chart that uses
+     it carries visible labels and the table view below provides the relief. */
+  :root {
+    color-scheme: light;
+    --surface-0: #f6f5f2;
+    --surface-1: #fcfcfb;
+    --border:    #e4e2dc;
+    --grid:      #ebe9e4;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #77756e;
+    --measured:  #2a78d6;
+    --modelled:  #eb6834;
+    --ceiling:   #1baf7a;
+    --shadow: 0 1px 2px rgba(11, 11, 11, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --border:    #33322f;
+      --grid:      #2b2b28;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #96948a;
+      --measured:  #3987e5;
+      --modelled:  #d95926;
+      --ceiling:   #199e70;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --border:    #33322f;
+    --grid:      #2b2b28;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #96948a;
+    --measured:  #3987e5;
+    --modelled:  #d95926;
+    --ceiling:   #199e70;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 4rem;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 1.25rem; }
+
+  header { padding: 2.5rem 0 1.5rem; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 .4rem; letter-spacing: -.015em; }
+  .sub { color: var(--text-secondary); margin: 0; max-width: 62ch; }
+  .sub code { font-size: .9em; color: var(--text-primary); }
+
+  .theme-toggle {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    background: var(--surface-1); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: .35rem .8rem; font: inherit; font-size: .8rem; cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--text-primary); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: .9rem 1rem; box-shadow: var(--shadow); }
+  .tile .label { font-size: .78rem; color: var(--text-secondary); margin-bottom: .3rem; }
+  .tile .value { font-size: 1.75rem; line-height: 1.1; letter-spacing: -.02em; }
+  .tile .note { font-size: .76rem; color: var(--text-muted); margin-top: .25rem; }
+  .tile .value .unit { font-size: .95rem; color: var(--text-secondary); letter-spacing: 0; }
+
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: .85rem 1rem; margin-bottom: 1.25rem; box-shadow: var(--shadow);
+  }
+  .filters .field { display: flex; flex-direction: column; gap: .3rem; }
+  .filters label { font-size: .78rem; color: var(--text-secondary); }
+  .filters select {
+    font: inherit; padding: .35rem .5rem; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--surface-0); color: var(--text-primary);
+  }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 1.15rem 1.25rem 1.35rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); }
+  .card h2 { font-size: 1.02rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  .card .caption { font-size: .84rem; color: var(--text-secondary); margin: 0 0 1rem; max-width: 74ch; }
+  .card .caption strong { color: var(--text-primary); font-weight: 600; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0 0 .6rem; font-size: .8rem; color: var(--text-secondary); }
+  .legend span { display: inline-flex; align-items: center; gap: .4rem; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .swatch.line { height: 3px; border-radius: 2px; width: 14px; }
+
+  .plot { width: 100%; overflow-x: auto; }
+  svg { display: block; width: 100%; height: auto; }
+  .grid-line { stroke: var(--grid); stroke-width: 1; }
+  .axis-line { stroke: var(--border); stroke-width: 1; }
+  .tick { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .axis-title { fill: var(--text-secondary); font-size: 11.5px; }
+  .panel-title { fill: var(--text-primary); font-size: 12.5px; font-weight: 600; }
+  .annot { fill: var(--text-muted); font-size: 11px; }
+  .threshold { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 4 3; opacity: .75; }
+  .direct-label { font-size: 11.5px; font-weight: 600; }
+
+  .smalls { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 720px) { .smalls { grid-template-columns: 1fr; } }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    transition: opacity .08s ease;
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: .5rem .6rem; font-size: .8rem; line-height: 1.4;
+    box-shadow: 0 4px 14px rgba(11, 11, 11, .13); max-width: 260px;
+  }
+  .tooltip .t-title { font-weight: 600; margin-bottom: .2rem; }
+  .tooltip .t-row { display: flex; justify-content: space-between; gap: 1rem; color: var(--text-secondary); }
+  .tooltip .t-row b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  caption { text-align: left; font-size: .84rem; color: var(--text-secondary); padding-bottom: .6rem; }
+  th, td { text-align: right; padding: .4rem .5rem; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; font-variant-numeric: normal; }
+  thead th { color: var(--text-secondary); font-weight: 600; font-variant-numeric: normal; }
+  tbody tr:hover { background: var(--surface-0); }
+  tfoot td { font-weight: 600; border-bottom: none; }
+
+  .footnote { font-size: .82rem; color: var(--text-muted); margin-top: 1.5rem; }
+  .footnote code { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" type="button">Theme</button>
+
+<div class="wrap">
+  <header>
+    <h1>Stochastic solar model — the fitted clear-sky index</h1>
+    <p class="sub">
+      Daily irradiance is never modelled directly. It is split into a deterministic ceiling
+      (solar geometry and atmosphere) and a bounded random fraction of it, the
+      <strong>clear-sky index</strong>. This page shows the distribution fitted to the measured
+      record, and what a synthetic record drawn from it does and does not reproduce.
+    </p>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="filters">
+    <div class="field">
+      <label for="monthSelect">Month — scopes the distribution below</label>
+      <select id="monthSelect"></select>
+    </div>
+    <div class="field">
+      <label for="yearSelect">Year — scopes the daily-irradiation panels</label>
+      <select id="yearSelect"></select>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>The distribution being modelled</h2>
+    <p class="caption">
+      The measured histogram against the fitted Beta. Beta is used because it is bounded at both
+      ends, so a draw can never be negative and never runs away — the generator needs no clamp.
+      The support runs to <strong>1.25, not 1.0</strong>: the ceiling carries a monthly-mean
+      turbidity, so a day cleaner than its month's average genuinely beats it.
+    </p>
+    <div class="legend">
+      <span><i class="swatch" style="background: var(--measured)"></i>Measured days</span>
+      <span><i class="swatch line" style="background: var(--modelled)"></i>Fitted Beta density</span>
+    </div>
+    <div class="plot"><svg id="distChart" viewBox="0 0 760 330" role="img" aria-label="Histogram of the measured daily clear-sky index with the fitted Beta density overlaid"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>Seasonal profile</h2>
+    <p class="caption">
+      One Beta per calendar month, so the model carries the season. Sampling the fitted model
+      reproduces the measured monthly means closely — which it should, since matching the first
+      two moments is exactly what the fit does. This panel confirms the wiring, not the physics.
+    </p>
+    <div class="legend">
+      <span><i class="swatch line" style="background: var(--measured)"></i>Measured monthly mean</span>
+      <span><i class="swatch line" style="background: var(--modelled)"></i>Synthetic monthly mean</span>
+    </div>
+    <div class="plot"><svg id="seasonChart" viewBox="0 0 760 300" role="img" aria-label="Monthly mean clear-sky index, measured against synthetic"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>A year of daily irradiation</h2>
+    <p class="caption">
+      The same year, measured and generated, each under its clear-sky ceiling. The totals agree
+      and the spread agrees. <strong>Look at the texture instead:</strong> the measured year moves
+      in runs — dull weeks and bright weeks — while the synthetic one flickers between them,
+      because every day is drawn independently of the one before it.
+    </p>
+    <div class="legend">
+      <span><i class="swatch" style="background: var(--measured)"></i>Measured daily GHI</span>
+      <span><i class="swatch" style="background: var(--modelled)"></i>Synthetic daily GHI</span>
+      <span><i class="swatch line" style="background: var(--ceiling)"></i>Clear-sky ceiling</span>
+    </div>
+    <div class="smalls">
+      <div class="plot"><svg id="yearMeasured" viewBox="0 0 400 260" role="img" aria-label="Measured daily irradiation across one year, under the clear-sky ceiling"></svg></div>
+      <div class="plot"><svg id="yearSynthetic" viewBox="0 0 400 260" role="img" aria-label="Synthetic daily irradiation across one year, under the clear-sky ceiling"></svg></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>What this model still gets wrong</h2>
+    <p class="caption">
+      Each day plotted against the day before it. A cloud of points along the diagonal means
+      weather persists; a shapeless blob means each day forgets the last. The measured record
+      persists and the model does not — this is the single clearest statement of what is missing,
+      and the reason a Markov chain is the next step rather than a refinement.
+    </p>
+    <div class="smalls">
+      <div class="plot"><svg id="lagMeasured" viewBox="0 0 400 300" role="img" aria-label="Measured clear-sky index today against yesterday"></svg></div>
+      <div class="plot"><svg id="lagSynthetic" viewBox="0 0 400 300" role="img" aria-label="Synthetic clear-sky index today against yesterday"></svg></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>The model itself</h2>
+    <table id="fitTable">
+      <caption>
+        Twelve pairs of numbers are the entire learned model. Everything else on this page is
+        either the deterministic ceiling or a draw from these.
+      </caption>
+    </table>
+  </section>
+
+  <p class="footnote" id="footnote"></p>
+</div>
+
+<div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+/* ---------- small helpers ---------- */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAY_MS = 86400000;
+
+function el(name, attrs = {}, text = null) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  if (text !== null) node.textContent = text;
+  return node;
+}
+
+function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+
+const scale = (d0, d1, r0, r1) => v => r0 + (v - d0) / (d1 - d0) * (r1 - r0);
+
+const fmt = (v, digits = 2) => v.toFixed(digits);
+
+/* Tick values a person would choose: 1, 2 or 5 times a power of ten, covering [0, max]. */
+function niceTicks(max, target = 5) {
+  const raw = max / target;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].find(s => s * magnitude >= raw) * magnitude;
+  const ticks = [];
+  for (let v = 0; v <= max + 1e-9; v += step) ticks.push(Number(v.toFixed(10)));
+  return ticks;
+}
+
+/* Dense point clouds are drawn as ONE path of zero-length round-capped segments rather than
+   thousands of <circle> nodes. Same picture, one element, no frame drops. */
+function dotPath(points, x, y) {
+  let d = "";
+  for (const [px, py] of points) d += `M${x(px).toFixed(1)} ${y(py).toFixed(1)}h0`;
+  return d;
+}
+
+/* ---------- data preparation ---------- */
+
+const START_MS = Date.parse(DATA.startDate + "T00:00:00Z");
+const dateOf = offset => new Date(START_MS + offset * DAY_MS);
+
+function decorate(track) {
+  const n = track.offset.length;
+  const month = new Int8Array(n), year = new Int16Array(n), dayOfYear = new Int16Array(n);
+  const ghi = new Float32Array(n);
+
+  for (let i = 0; i < n; i++) {
+    const date = dateOf(track.offset[i]);
+    month[i] = date.getUTCMonth();
+    year[i] = date.getUTCFullYear();
+    dayOfYear[i] = Math.round((date - Date.UTC(year[i], 0, 1)) / DAY_MS) + 1;
+    // Irradiation is not transmitted: it is exactly index x ceiling.
+    ghi[i] = track.index[i] * track.ceiling[i] / 1000;
+  }
+  return { ...track, month, year, dayOfYear, ghi, length: n };
+}
+
+const measured = decorate(DATA.observed);
+const synthetic = decorate(DATA.synthetic);
+
+/* Consecutive-day pairs only. Joining across a gap would invent a transition that never
+   happened, and the measured record has plenty of gaps. */
+function lagPairs(track) {
+  const pairs = [];
+  for (let i = 1; i < track.length; i++) {
+    if (track.offset[i] - track.offset[i - 1] !== 1) continue;
+    pairs.push([track.index[i - 1], track.index[i]]);
+  }
+  return pairs;
+}
+
+function monthlyMeans(track) {
+  const sums = new Array(12).fill(0), counts = new Array(12).fill(0);
+  for (let i = 0; i < track.length; i++) { sums[track.month[i]] += track.index[i]; counts[track.month[i]]++; }
+  return sums.map((sum, i) => counts[i] ? sum / counts[i] : NaN);
+}
+
+const yearsAvailable = [...new Set(Array.from(measured.year))]
+  .filter(y => Array.from(measured.year).filter(v => v === y).length > 340)
+  .sort((a, b) => a - b);
+
+/* ---------- tooltip ---------- */
+
+const tooltip = document.getElementById("tooltip");
+
+function showTip(event, title, rows) {
+  tooltip.innerHTML = `<div class="t-title">${title}</div>` +
+    rows.map(([k, v]) => `<div class="t-row"><span>${k}</span><b>${v}</b></div>`).join("");
+  tooltip.style.opacity = "1";
+  const pad = 14;
+  const box = tooltip.getBoundingClientRect();
+  let left = event.clientX + pad, top = event.clientY + pad;
+  if (left + box.width > window.innerWidth - 8) left = event.clientX - box.width - pad;
+  if (top + box.height > window.innerHeight - 8) top = event.clientY - box.height - pad;
+  tooltip.style.left = `${Math.max(8, left)}px`;
+  tooltip.style.top = `${Math.max(8, top)}px`;
+}
+
+const hideTip = () => { tooltip.style.opacity = "0"; };
+
+/* ---------- axes ---------- */
+
+function yAxis(svg, y, ticks, plot, { label = null, format = v => fmt(v, 1) } = {}) {
+  for (const value of ticks) {
+    const py = y(value);
+    svg.appendChild(el("line", { class: "grid-line", x1: plot.left, x2: plot.right, y1: py, y2: py }));
+    svg.appendChild(el("text", { class: "tick", x: plot.left - 7, y: py + 3.5, "text-anchor": "end" }, format(value)));
+  }
+  if (label) {
+    svg.appendChild(el("text", {
+      class: "axis-title", transform: `rotate(-90 ${plot.left - 40} ${(plot.top + plot.bottom) / 2})`,
+      x: plot.left - 40, y: (plot.top + plot.bottom) / 2, "text-anchor": "middle"
+    }, label));
+  }
+}
+
+function xAxis(svg, ticks, plot, { label = null } = {}) {
+  svg.appendChild(el("line", { class: "axis-line", x1: plot.left, x2: plot.right, y1: plot.bottom, y2: plot.bottom }));
+  for (const [px, text] of ticks) {
+    svg.appendChild(el("text", { class: "tick", x: px, y: plot.bottom + 16, "text-anchor": "middle" }, text));
+  }
+  if (label) {
+    svg.appendChild(el("text", { class: "axis-title", x: (plot.left + plot.right) / 2, y: plot.bottom + 36, "text-anchor": "middle" }, label));
+  }
+}
+
+/* ---------- chart 1: distribution ---------- */
+
+const BINS = 25;
+
+function drawDistribution(monthIndex) {
+  const svg = document.getElementById("distChart");
+  clear(svg);
+
+  const plot = { left: 58, right: 738, top: 18, bottom: 272 };
+  const support = DATA.support;
+  const binWidth = support / BINS;
+
+  const values = [];
+  for (let i = 0; i < measured.length; i++) {
+    if (monthIndex === null || measured.month[i] === monthIndex) values.push(measured.index[i]);
+  }
+
+  const counts = new Array(BINS).fill(0);
+  for (const value of values) counts[Math.min(BINS - 1, Math.floor(value / binWidth))]++;
+  // Normalised to a density so the bars and the fitted curve share one y-axis.
+  const density = counts.map(c => c / (values.length * binWidth));
+
+  const fit = monthIndex === null ? null : DATA.months[monthIndex];
+  const curve = fit ? fit.density : null;
+
+  const yMax = Math.max(Math.max(...density), curve ? Math.max(...curve) : 0) * 1.12;
+  const x = scale(0, support, plot.left, plot.right);
+  const y = scale(0, yMax, plot.bottom, plot.top);
+
+  yAxis(svg, y, niceTicks(yMax), plot, { label: "Density", format: v => fmt(v, 1) });
+
+  for (let bin = 0; bin < BINS; bin++) {
+    if (density[bin] <= 0) continue;
+    const x0 = x(bin * binWidth), x1 = x((bin + 1) * binWidth);
+    const top = y(density[bin]);
+    // 2px surface gap between adjacent fills, and 4px rounded ends away from the baseline.
+    const rect = el("path", {
+      d: roundedTopBar(x0 + 1, x1 - 1, top, plot.bottom, 4),
+      fill: "var(--measured)"
+    });
+    const lo = (bin * binWidth), hi = lo + binWidth;
+    rect.addEventListener("pointerenter", e => showTip(e,
+      `Clear-sky index ${fmt(lo)}–${fmt(hi)}`,
+      [["Days", counts[bin].toLocaleString()],
+       ["Share of period", (100 * counts[bin] / values.length).toFixed(1) + "%"]]));
+    rect.addEventListener("pointerleave", hideTip);
+    svg.appendChild(rect);
+  }
+
+  if (curve) {
+    let d = "";
+    for (let i = 0; i < curve.length; i++) {
+      const px = x(support * i / (curve.length - 1));
+      const py = y(Math.min(curve[i], yMax));
+      d += (i === 0 ? "M" : "L") + px.toFixed(1) + " " + py.toFixed(1);
+    }
+    svg.appendChild(el("path", { d, fill: "none", stroke: "var(--modelled)", "stroke-width": 2, "stroke-linejoin": "round" }));
+    // Kept hard left: the right-hand corner belongs to the ceiling annotation.
+    svg.appendChild(el("text", {
+      class: "direct-label", fill: "var(--modelled)", x: plot.left + 6, y: plot.top + 12
+    }, `Beta(α ${fmt(fit.alpha)}, β ${fmt(fit.beta)})`));
+  }
+
+  // The ceiling marker: the whole reason the support runs past 1.0.
+  svg.appendChild(el("line", { class: "threshold", x1: x(1), x2: x(1), y1: plot.top, y2: plot.bottom }));
+  svg.appendChild(el("text", { class: "annot", x: x(1) + 5, y: plot.top + 11 }, "modelled ceiling = 1.0"));
+
+  const over = values.filter(v => v > 1).length;
+  svg.appendChild(el("text", { class: "annot", x: x(1) + 5, y: plot.top + 25 },
+    `${(100 * over / values.length).toFixed(1)}% of days beat it`));
+
+  const ticks = [];
+  for (let v = 0; v <= support + 1e-9; v += 0.25) ticks.push([x(v), fmt(v)]);
+  xAxis(svg, ticks, plot, { label: "Clear-sky index  (measured GHI ÷ modelled clear-sky GHI)" });
+
+  svg.appendChild(el("text", { class: "annot", x: plot.left, y: plot.bottom + 52 },
+    `${values.length.toLocaleString()} days · ` +
+    (monthIndex === null ? "all months pooled — the fitted curve is drawn per month" : MONTH_NAMES[monthIndex])));
+}
+
+function roundedTopBar(x0, x1, top, bottom, radius) {
+  const r = Math.max(0, Math.min(radius, (x1 - x0) / 2, bottom - top));
+  return `M${x0.toFixed(1)} ${bottom.toFixed(1)}V${(top + r).toFixed(1)}` +
+         `a${r} ${r} 0 0 1 ${r} ${-r}h${(x1 - x0 - 2 * r).toFixed(1)}` +
+         `a${r} ${r} 0 0 1 ${r} ${r}V${bottom.toFixed(1)}Z`;
+}
+
+/* ---------- chart 2: seasonal profile ---------- */
+
+function drawSeason(selectedMonth) {
+  const svg = document.getElementById("seasonChart");
+  clear(svg);
+
+  const plot = { left: 58, right: 668, top: 20, bottom: 238 };
+  const measuredMeans = monthlyMeans(measured);
+  const syntheticMeans = monthlyMeans(synthetic);
+
+  const all = measuredMeans.concat(syntheticMeans);
+  const yLow = Math.min(...all) - 0.06, yHigh = Math.max(...all) + 0.06;
+
+  const x = i => plot.left + (plot.right - plot.left) * i / 11;
+  const y = scale(yLow, yHigh, plot.bottom, plot.top);
+
+  const ticks = [];
+  for (let v = Math.ceil(yLow * 20) / 20; v <= yHigh; v += 0.05) ticks.push(Number(v.toFixed(2)));
+  yAxis(svg, y, ticks, plot, { label: "Mean clear-sky index", format: v => fmt(v, 2) });
+  xAxis(svg, MONTH_NAMES.map((m, i) => [x(i), m]), plot);
+
+  // The two series nearly coincide by construction, so their end labels would sit on top of
+  // each other. Stagger them above and below the shared endpoint.
+  for (const [means, color, name, dy] of [
+    [measuredMeans, "var(--measured)", "Measured", -9],
+    [syntheticMeans, "var(--modelled)", "Synthetic", 17]
+  ]) {
+    let d = "";
+    means.forEach((value, i) => { d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + " " + y(value).toFixed(1); });
+    svg.appendChild(el("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
+
+    means.forEach((value, i) => {
+      // 2px surface ring so the two series stay legible where they overlap, which is everywhere.
+      svg.appendChild(el("circle", {
+        cx: x(i), cy: y(value), r: i === selectedMonth ? 6 : 4,
+        fill: color, stroke: "var(--surface-1)", "stroke-width": 2
+      }));
+    });
+
+    svg.appendChild(el("text", {
+      class: "direct-label", fill: color, x: plot.right + 8, y: y(means[11]) + dy
+    }, name));
+  }
+
+  // One hover column per month, wide enough to be an easy target.
+  for (let i = 0; i < 12; i++) {
+    const band = el("rect", {
+      x: x(i) - (plot.right - plot.left) / 22, y: plot.top,
+      width: (plot.right - plot.left) / 11, height: plot.bottom - plot.top,
+      fill: "transparent"
+    });
+    band.addEventListener("pointermove", e => showTip(e, MONTH_NAMES[i], [
+      ["Measured", fmt(measuredMeans[i], 3)],
+      ["Synthetic", fmt(syntheticMeans[i], 3)],
+      ["Fitted Beta α", fmt(DATA.months[i].alpha, 2)],
+      ["Fitted Beta β", fmt(DATA.months[i].beta, 2)],
+      ["Days measured", DATA.months[i].days.toLocaleString()]
+    ]));
+    band.addEventListener("pointerleave", hideTip);
+    svg.appendChild(band);
+  }
+}
+
+/* ---------- chart 3: one year of daily irradiation ---------- */
+
+function drawYear(svgId, track, year, color, title) {
+  const svg = document.getElementById(svgId);
+  clear(svg);
+
+  const plot = { left: 54, right: 386, top: 46, bottom: 208 };
+  const rows = [];
+  for (let i = 0; i < track.length; i++) {
+    if (track.year[i] === year) rows.push([track.dayOfYear[i], track.ghi[i], track.ceiling[i] / 1000]);
+  }
+
+  const yMax = 9;
+  const x = scale(1, 366, plot.left, plot.right);
+  const y = scale(0, yMax, plot.bottom, plot.top);
+
+  yAxis(svg, y, [0, 3, 6, 9], plot, { label: "kWh/m²", format: v => fmt(v, 0) });
+
+  // Ceiling first, so the daily bars read as filling it rather than sitting on top of it.
+  let ceilingPath = "";
+  rows.forEach(([doy, , ceiling], i) => {
+    ceilingPath += (i === 0 ? "M" : "L") + x(doy).toFixed(1) + " " + y(ceiling).toFixed(1);
+  });
+  svg.appendChild(el("path", { d: ceilingPath, fill: "none", stroke: "var(--ceiling)", "stroke-width": 2 }));
+
+  let bars = "";
+  for (const [doy, ghi] of rows) {
+    bars += `M${x(doy).toFixed(1)} ${plot.bottom}V${y(ghi).toFixed(1)}`;
+  }
+  svg.appendChild(el("path", { d: bars, stroke: color, "stroke-width": 1.1, opacity: .85 }));
+
+  svg.appendChild(el("text", { class: "panel-title", x: 8, y: 18 }, title));
+  const total = rows.reduce((sum, r) => sum + r[1], 0);
+  svg.appendChild(el("text", { class: "annot", x: 8, y: 32 },
+    `${rows.length} days · ${Math.round(total)} kWh/m² total`));
+
+  const monthStarts = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+  xAxis(svg, monthStarts.filter((_, i) => i % 3 === 0).map((doy, i) => [x(doy), ["Jan", "Apr", "Jul", "Oct"][i]]), plot);
+
+  const hit = el("rect", { x: plot.left, y: plot.top, width: plot.right - plot.left, height: plot.bottom - plot.top, fill: "transparent" });
+  hit.addEventListener("pointermove", event => {
+    // Screen pixels back through the viewBox, then back through the x scale.
+    const box = svg.getBoundingClientRect();
+    const vx = (event.clientX - box.left) / box.width * 400;
+    const doy = 1 + (vx - plot.left) / (plot.right - plot.left) * 365;
+
+    let best = null, bestGap = Infinity;
+    for (const row of rows) {
+      const gap = Math.abs(row[0] - doy);
+      if (gap < bestGap) { bestGap = gap; best = row; }
+    }
+    if (!best) return;
+    const date = new Date(Date.UTC(year, 0, best[0]));
+    showTip(event, date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }), [
+      ["Daily GHI", fmt(best[1], 2) + " kWh/m²"],
+      ["Clear-sky ceiling", fmt(best[2], 2) + " kWh/m²"],
+      ["Clear-sky index", fmt(best[1] / best[2], 3)]
+    ]);
+  });
+  hit.addEventListener("pointerleave", hideTip);
+  svg.appendChild(hit);
+}
+
+/* ---------- chart 4: persistence ---------- */
+
+function drawLag(svgId, pairs, color, title, correlation) {
+  const svg = document.getElementById(svgId);
+  clear(svg);
+
+  const plot = { left: 54, right: 380, top: 48, bottom: 240 };
+  const support = DATA.support;
+  const x = scale(0, support, plot.left, plot.right);
+  const y = scale(0, support, plot.bottom, plot.top);
+
+  yAxis(svg, y, [0, 0.25, 0.5, 0.75, 1.0, 1.25], plot, { label: "Today", format: v => fmt(v, 2) });
+  xAxis(svg, [0, 0.25, 0.5, 0.75, 1.0, 1.25].map(v => [x(v), fmt(v, 2)]), plot, { label: "Yesterday" });
+
+  svg.appendChild(el("path", {
+    d: dotPath(pairs, x, y), stroke: color, "stroke-width": 3, "stroke-linecap": "round",
+    fill: "none", opacity: .3
+  }));
+
+  // The least-squares line through the cloud. Its slope IS the correlation (both axes carry
+  // the same quantity and near enough the same spread), so this makes the number on the right
+  // something the eye can check rather than something it has to take on trust.
+  const meanX = pairs.reduce((s, p) => s + p[0], 0) / pairs.length;
+  const meanY = pairs.reduce((s, p) => s + p[1], 0) / pairs.length;
+  let sxy = 0, sxx = 0;
+  for (const [a, b] of pairs) { sxy += (a - meanX) * (b - meanY); sxx += (a - meanX) ** 2; }
+  const slope = sxy / sxx;
+  const lineAt = v => meanY + slope * (v - meanX);
+
+  svg.appendChild(el("line", {
+    x1: x(0), y1: y(lineAt(0)), x2: x(support), y2: y(lineAt(support)),
+    stroke: color, "stroke-width": 2.5, opacity: .95
+  }));
+
+  svg.appendChild(el("text", { class: "panel-title", x: 8, y: 18 }, title));
+  svg.appendChild(el("text", {
+    class: "direct-label", fill: color, x: plot.right, y: 18, "text-anchor": "end"
+  }, `lag-1 r = ${fmt(correlation, 3)}`));
+  svg.appendChild(el("text", { class: "annot", x: 8, y: 33 }, `${pairs.length.toLocaleString()} consecutive-day pairs`));
+
+  // Dense clouds get a nearest-point layer rather than per-mark hit areas.
+  const hit = el("rect", { x: plot.left, y: plot.top, width: plot.right - plot.left, height: plot.bottom - plot.top, fill: "transparent" });
+  hit.addEventListener("pointermove", event => {
+    const box = svg.getBoundingClientRect();
+    const vx = (event.clientX - box.left) / box.width * 400;
+    const vy = (event.clientY - box.top) / box.height * 300;
+    let best = null, bestGap = Infinity;
+    for (const [a, b] of pairs) {
+      const gap = (x(a) - vx) ** 2 + (y(b) - vy) ** 2;
+      if (gap < bestGap) { bestGap = gap; best = [a, b]; }
+    }
+    if (!best || bestGap > 400) { hideTip(); return; }
+    showTip(event, "One consecutive-day pair", [
+      ["Yesterday", fmt(best[0], 3)],
+      ["Today", fmt(best[1], 3)],
+      ["Change", (best[1] - best[0] >= 0 ? "+" : "") + fmt(best[1] - best[0], 3)]
+    ]);
+  });
+  hit.addEventListener("pointerleave", hideTip);
+  svg.appendChild(hit);
+}
+
+/* ---------- tiles, table, footnote ---------- */
+
+function drawTiles() {
+  const gap = DATA.autocorrelation.observed - DATA.autocorrelation.synthetic;
+  const tiles = [
+    ["Days fitted", measured.length.toLocaleString(), "", `${DATA.startDate} to ${DATA.endDate}`],
+    ["Mean clear-sky index", fmt(monthlyMeansOverall(measured), 3), "", "1.0 would be a permanently cloudless site"],
+    ["Annual GHI, measured", Math.round(DATA.annualKWh.observed).toLocaleString(), " kWh/m²",
+      `Synthetic: ${Math.round(DATA.annualKWh.synthetic).toLocaleString()} kWh/m² (${(100 * (DATA.annualKWh.synthetic - DATA.annualKWh.observed) / DATA.annualKWh.observed).toFixed(1)}%)`],
+    ["Persistence not captured", fmt(gap, 2), "", `lag-1 r: ${fmt(DATA.autocorrelation.observed, 2)} measured vs ${fmt(DATA.autocorrelation.synthetic, 2)} synthetic`]
+  ];
+
+  document.getElementById("tiles").innerHTML = tiles.map(([label, value, unit, note]) => `
+    <div class="tile">
+      <div class="label">${label}</div>
+      <div class="value">${value}<span class="unit">${unit}</span></div>
+      <div class="note">${note}</div>
+    </div>`).join("");
+}
+
+function monthlyMeansOverall(track) {
+  let sum = 0;
+  for (let i = 0; i < track.length; i++) sum += track.index[i];
+  return sum / track.length;
+}
+
+function drawTable() {
+  const rows = DATA.months.map(m => `
+    <tr>
+      <td>${MONTH_NAMES[m.month - 1]}</td>
+      <td>${m.days.toLocaleString()}</td>
+      <td>${fmt(m.alpha, 3)}</td>
+      <td>${fmt(m.beta, 3)}</td>
+      <td>${fmt(m.mean, 3)}</td>
+      <td>${fmt(m.sd, 3)}</td>
+      <td>${m.exceedingCeiling} (${(100 * m.exceedingCeiling / m.days).toFixed(1)}%)</td>
+    </tr>`).join("");
+
+  const totalDays = DATA.months.reduce((s, m) => s + m.days, 0);
+  const totalOver = DATA.months.reduce((s, m) => s + m.exceedingCeiling, 0);
+
+  document.getElementById("fitTable").innerHTML = `
+    <caption>
+      Twelve pairs of numbers are the entire learned model. Everything else on this page is
+      either the deterministic ceiling or a draw from these.
+    </caption>
+    <thead>
+      <tr><th>Month</th><th>Days</th><th>α</th><th>β</th><th>Mean</th><th>SD</th><th>Days above ceiling</th></tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr><td>All</td><td>${totalDays.toLocaleString()}</td><td>—</td><td>—</td>
+      <td>${fmt(monthlyMeansOverall(measured), 3)}</td><td>—</td>
+      <td>${totalOver} (${(100 * totalOver / totalDays).toFixed(1)}%)</td></tr>
+    </tfoot>`;
+}
+
+/* ---------- wiring ---------- */
+
+const monthSelect = document.getElementById("monthSelect");
+monthSelect.innerHTML = `<option value="all">All year (pooled)</option>` +
+  MONTH_NAMES.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+monthSelect.value = "6";
+
+const yearSelect = document.getElementById("yearSelect");
+yearSelect.innerHTML = yearsAvailable.map(y => `<option value="${y}">${y}</option>`).join("");
+yearSelect.value = yearsAvailable[Math.floor(yearsAvailable.length / 2)];
+
+function render() {
+  const monthIndex = monthSelect.value === "all" ? null : Number(monthSelect.value);
+  const year = Number(yearSelect.value);
+
+  drawDistribution(monthIndex);
+  drawSeason(monthIndex);
+  drawYear("yearMeasured", measured, year, "var(--measured)", `Measured ${year}`);
+  drawYear("yearSynthetic", synthetic, year, "var(--modelled)", `Synthetic ${year}`);
+}
+
+monthSelect.addEventListener("change", render);
+yearSelect.addEventListener("change", render);
+
+document.getElementById("themeToggle").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.getAttribute("data-theme") === "dark" ||
+    (!root.hasAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+  render();
+});
+
+drawTiles();
+drawTable();
+drawLag("lagMeasured", lagPairs(measured), "var(--measured)", "Measured", DATA.autocorrelation.observed);
+drawLag("lagSynthetic", lagPairs(synthetic), "var(--modelled)", "Synthetic", DATA.autocorrelation.synthetic);
+render();
+
+document.getElementById("footnote").textContent =
+  `${DATA.site} (${DATA.latitude}°N, ${DATA.longitude}°E). Clear-sky ceiling: Ineichen-Perez with ` +
+  `turbidity fitted to this station's own cloudless days. Synthetic record generated over the same ` +
+  `span as the measured one, drawing independently from the fitted monthly distributions. ` +
+  `Regenerate with: dotnet run --project samples/WeatherModel.Sample -c Release -- viz`;
+</script>
+</body>
+</html>
