@@ -9,7 +9,7 @@ namespace WeatherSynth.Data;
 public static class RepositoryData
 {
     /// <summary>Filename of the DWD Bochum hourly solar record.</summary>
-    public const string BochumFileName = "dwd_bochum.csv";
+    public const string BochumFileName = "dwd_bochum_solar.csv";
 
     /// <summary>
     /// Full path to a file in the repository's <c>data/</c> directory, or null when the
