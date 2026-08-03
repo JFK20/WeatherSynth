@@ -61,18 +61,6 @@ internal static class ClimateFixtures
     /// <para>Compare against <c>1.36 / sqrt(n)</c> for a 5% test. That critical value scales with
     /// n, so the check means the same thing at any sample size.</para>
     /// </summary>
-    internal static double KolmogorovSmirnov(IEnumerable<double> values, ScaledBeta fit)
-    {
-        var sorted = values.OrderBy(v => v).ToList();
-        double worst = 0.0;
-
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            double fitted = fit.CumulativeProbability(sorted[i]);
-            worst = Math.Max(worst, Math.Abs((i + 1.0) / sorted.Count - fitted));
-            worst = Math.Max(worst, Math.Abs(fitted - (double)i / sorted.Count));
-        }
-
-        return worst;
-    }
+    internal static double KolmogorovSmirnov(IEnumerable<double> values, ScaledBeta fit) =>
+        GoodnessOfFit.KolmogorovSmirnovDistance(values, fit.CumulativeProbability);
 }

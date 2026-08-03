@@ -15,7 +15,7 @@ This data is required without it, the project doesn't work.
 as many years as you need:
 
 ```csharp
-var provider = SyntheticSolarProvider.FromDwdRecord("data/dwd_bochum.csv", DwdStations.Bochum);
+var provider = SyntheticSolarProvider.FromDwdRecord("data/dwd_bochum_solar.csv", DwdStations.Bochum);
 
 // A year at the fitting station, reproducible from (year, seed).
 SyntheticSolarYear year = provider.GenerateYear(2026, seed: 42);
@@ -53,15 +53,32 @@ The repo has 3 folders:
    - `impact`: what the zenith residual costs on daily clear-sky GHI
    - `fitcoords`: recovers station coordinates from ZENIT by residual minimization
    - `sanity`: the original clear-sky harness (equinox/solstice totals)
+   - `windsummary`: wind coverage, gaps, monthly mean speeds, the cube-law correction
 
 It is built for .NET 9.0.
 
-Currently, it only supports Global Radiation, which can be used, for example, for PV generation calculations. In the future, it should also support wind.
+Currently, it only supports Global Radiation, which can be used, for example, for PV generation calculations. Wind is in progress the measured record is in place and described by `windsummary`, but there is no wind generator yet.
+
+## Two stations
+
+Solar is fitted at **Bochum (DWD 7365)** and wind at **Essen-Bredeney (DWD 01303)**, about 29 km
+apart. That split is forced rather than chosen: Bochum carries no wind record at all. Both sit at
+roughly 150 m in the same regional weather, which is what makes the pairing defensible but any
+coupling measured between the two resources is attenuated by the separation, and so is a lower
+bound on the co-located value.
+
+The wind record runs 2009-01-01 to 2025-12-31 at hourly resolution, matching the solar record's
+span. Its anemometer is at **15 m** above ground, not the 10 m almost everyone assumes.
 
 ## Data attribution
 
-The weather [data](https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/) in `data/dwd_bochum.csv` comes from the Deutscher Wetterdienst [DWD](https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/DESCRIPTION_obsgermany_climate_hourly_solar_en.pdf) Climate
+The weather [data](https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/) in `data/dwd_bochum_solar.csv` comes from the Deutscher Wetterdienst [DWD](https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/DESCRIPTION_obsgermany_climate_hourly_solar_en.pdf) Climate
 Data Center and is used under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
+
+The wind [data](https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/) in `data/dwd_essen_wind.csv` comes from the same source under the same
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. It is DWD's hourly wind
+product for station 01303, spliced from the `historical/` and `recent/` archives with the overlap
+de-duplicated in favour of `historical/`, and restricted to 2009-2025.
 
 © Deutscher Wetterdienst, 2026
 

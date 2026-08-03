@@ -8,6 +8,9 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class Program
 {
+    /// <summary>Commands reading the wind record rather than the solar one.</summary>
+    private static readonly string[] WindCommands = { "windsummary" };
+
     private static int Main(string[] args)
     {
         string command = args.Length > 0 ? args[0] : "summary";
@@ -25,6 +28,13 @@ internal static class Program
             return 0;
         }
 
+        // The two records are different files at different stations, so which one to read is
+        // decided before anything is read at all rather than by loading both.
+        return WindCommands.Contains(command) ? RunWind(command) : RunSolar(command, args);
+    }
+
+    private static int RunSolar(string command, string[] args)
+    {
         string? dataPath = RepositoryData.TryLocateBochum();
         if (dataPath is null)
         {
@@ -89,8 +99,44 @@ internal static class Program
             default:
                 Console.Error.WriteLine(
                     $"Unknown command '{command}'. Try: summary, zenith, decompose, kt, "
-                        + "calibrate, fit, year, viz, impact, fitcoords, sanity"
+                        + "calibrate, fit, year, viz, impact, fitcoords, sanity, windsummary"
                 );
+                return 1;
+        }
+
+        return 0;
+    }
+
+    private static int RunWind(string command)
+    {
+        string? dataPath = RepositoryData.TryLocateEssenWind();
+        if (dataPath is null)
+        {
+            Console.Error.WriteLine(
+                $"Could not find data/{RepositoryData.EssenWindFileName} in any parent directory."
+            );
+            return 1;
+        }
+
+        var station = DwdWindStations.EssenBredeney;
+
+        Console.WriteLine($"Reading {dataPath} ...");
+        var hours = DwdWindReader.Read(dataPath).ToList();
+        var days = DwdWindDayAggregator.ToDays(hours);
+        Console.WriteLine(
+            $"{hours.Count:N0} hours, {days.Count:N0} days "
+                + $"({days.Count(d => d.IsComplete):N0} complete)"
+        );
+        Console.WriteLine();
+
+        switch (command)
+        {
+            case "windsummary":
+                WindSummary.Run(hours, days, station);
+                break;
+
+            default:
+                Console.Error.WriteLine($"Unknown wind command '{command}'.");
                 return 1;
         }
 

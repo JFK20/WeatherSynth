@@ -11,6 +11,9 @@ public static class RepositoryData
     /// <summary>Filename of the DWD Bochum hourly solar record.</summary>
     public const string BochumFileName = "dwd_bochum_solar.csv";
 
+    /// <summary>Filename of the DWD Essen-Bredeney hourly wind record.</summary>
+    public const string EssenWindFileName = "dwd_essen_wind.csv";
+
     /// <summary>
     /// Full path to a file in the repository's <c>data/</c> directory, or null when the
     /// directory cannot be found or the file is not present. Callers should treat null as
@@ -32,6 +35,9 @@ public static class RepositoryData
         return null;
     }
 
-    /// <summary>Full path to the DWD Bochum record, or null when it is not present.</summary>
+    /// <summary>Full path to the DWD Bochum solar record, or null when it is not present.</summary>
     public static string? TryLocateBochum() => TryLocate(BochumFileName);
+
+    /// <summary>Full path to the DWD Essen-Bredeney wind record, or null when it is not present.</summary>
+    public static string? TryLocateEssenWind() => TryLocate(EssenWindFileName);
 }

@@ -74,8 +74,9 @@ public static class IndexFitReport
             var values = group.Select(d => d.ClearSkyIndex).ToList();
             double ks = KolmogorovSmirnov(values, model.ForMonth(group.Key));
 
-            // Kolmogorov's 5% critical value for a sample of n.
-            double critical = 1.36 / Math.Sqrt(values.Count);
+            double critical = WeatherSynth.Climate.GoodnessOfFit.CriticalValueFivePercent(
+                values.Count
+            );
             if (ks > critical)
                 failing.Add($"month {group.Key} (KS {ks:F3} vs critical {critical:F3})");
         }
@@ -254,24 +255,14 @@ public static class IndexFitReport
         );
 
     /// <summary>
-    /// Largest absolute gap between the empirical CDF of <paramref name="values"/> and the
-    /// fitted one. Checked on both sides of each step, since the empirical CDF jumps at every
-    /// observation and the larger gap can be on either side of the jump.
+    /// KS distance of a month's observations against its fitted Beta. The measurement itself
+    /// lives in Core, since the Weibull fit needs the same one against a different CDF.
     /// </summary>
-    private static double KolmogorovSmirnov(List<double> values, ScaledBeta fit)
-    {
-        var sorted = values.OrderBy(v => v).ToList();
-        double worst = 0.0;
-
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            double fitted = fit.CumulativeProbability(sorted[i]);
-            worst = Math.Max(worst, Math.Abs((i + 1.0) / sorted.Count - fitted));
-            worst = Math.Max(worst, Math.Abs(fitted - (double)i / sorted.Count));
-        }
-
-        return worst;
-    }
+    private static double KolmogorovSmirnov(List<double> values, ScaledBeta fit) =>
+        WeatherSynth.Climate.GoodnessOfFit.KolmogorovSmirnovDistance(
+            values,
+            fit.CumulativeProbability
+        );
 
     private static double StandardDeviation(IReadOnlyCollection<double> values)
     {

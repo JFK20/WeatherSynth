@@ -53,7 +53,7 @@ namespace WeatherSynth.Climate
             Beta = beta;
             Scale = scale;
             SampleCount = sampleCount;
-            _logBeta = LogBeta(alpha, beta);
+            _logBeta = SpecialFunctions.LogBeta(alpha, beta);
         }
 
         /// <summary>Distribution mean, in the scaled units (i.e. clear-sky index, not [0,1]).</summary>
@@ -372,40 +372,5 @@ namespace WeatherSynth.Climate
             }
         }
 
-        private static double LogBeta(double a, double b) =>
-            LogGamma(a) + LogGamma(b) - LogGamma(a + b);
-
-        private static readonly double[] LanczosCoefficients =
-        {
-            0.99999999999980993,
-            676.5203681218851,
-            -1259.1392167224028,
-            771.32342877765313,
-            -176.61502916214059,
-            12.507343278686905,
-            -0.13857109526572012,
-            9.9843695780195716e-6,
-            1.5056327351493116e-7,
-        };
-
-        /// <summary>Lanczos approximation, g = 7, n = 9. Accurate to ~15 significant digits.</summary>
-        private static double LogGamma(double x)
-        {
-            double[] coefficients = LanczosCoefficients;
-
-            if (x < 0.5)
-            {
-                // Reflection, so the series is only ever evaluated where it converges well.
-                return Math.Log(Math.PI / Math.Sin(Math.PI * x)) - LogGamma(1.0 - x);
-            }
-
-            x -= 1.0;
-            double series = coefficients[0];
-            for (int i = 1; i < coefficients.Length; i++)
-                series += coefficients[i] / (x + i);
-
-            double t = x + 7.5;
-            return 0.5 * Math.Log(2.0 * Math.PI) + (x + 0.5) * Math.Log(t) - t + Math.Log(series);
-        }
     }
 }
