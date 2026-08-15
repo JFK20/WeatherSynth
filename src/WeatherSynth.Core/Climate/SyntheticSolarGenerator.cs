@@ -35,7 +35,7 @@ namespace WeatherSynth.Climate
     /// what puts the geometry back.</para>
     ///
     /// <para><b>Order-dependent.</b> The index carries day-to-day persistence
-    /// (<see cref="ClearSkyIndexChain"/>), so <see cref="GenerateDay"/> depends on the call
+    /// (<see cref="LatentAr1Chain"/>), so <see cref="GenerateDay"/> depends on the call
     /// before it. Walk dates forwards, and call <see cref="Reset"/> between independent runs.
     /// <see cref="Generate"/> resets for you.</para>
     ///
@@ -44,13 +44,13 @@ namespace WeatherSynth.Climate
     /// </summary>
     public sealed class SyntheticSolarGenerator
     {
-        private readonly ClearSkyIndexChain _chain;
+        private readonly LatentAr1Chain _chain;
         private readonly DailyClearSkyCalculator _ceiling;
 
         /// <param name="model">Fitted index distribution, from a measured record.</param>
         /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
         public SyntheticSolarGenerator(ClearSkyIndexModel model, DailyClearSkyCalculator ceiling)
-            : this(new ClearSkyIndexChain(model), ceiling) { }
+            : this(new LatentAr1Chain(model), ceiling) { }
 
         /// <summary>
         /// Takes the index source directly, for callers that want something other than the fitted
@@ -59,7 +59,7 @@ namespace WeatherSynth.Climate
         /// </summary>
         /// <param name="chain">Source of clear-sky indices. This generator owns its state.</param>
         /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
-        public SyntheticSolarGenerator(ClearSkyIndexChain chain, DailyClearSkyCalculator ceiling)
+        public SyntheticSolarGenerator(LatentAr1Chain chain, DailyClearSkyCalculator ceiling)
         {
             _chain = chain ?? throw new ArgumentNullException(nameof(chain));
             _ceiling = ceiling ?? throw new ArgumentNullException(nameof(ceiling));

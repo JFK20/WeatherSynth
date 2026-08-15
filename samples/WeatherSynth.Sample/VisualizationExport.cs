@@ -83,13 +83,13 @@ public static class VisualizationExport
     {
         var start = observed[0].Date;
 
-        double observedAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(
+        double observedAutocorrelation = SeriesStatistics.Lag1Autocorrelation(
             observed.Select(d => (d.Date, d.ClearSkyIndex))
         );
-        double syntheticAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(
+        double syntheticAutocorrelation = SeriesStatistics.Lag1Autocorrelation(
             synthetic.Select(d => (d.Date, d.ClearSkyIndex))
         );
-        double independentAutocorrelation = IndexSeriesStatistics.Lag1Autocorrelation(independent);
+        double independentAutocorrelation = SeriesStatistics.Lag1Autocorrelation(independent);
 
         return new JsonObject
         {

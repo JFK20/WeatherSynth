@@ -25,7 +25,7 @@ namespace WeatherSynth.Climate
     /// was built on - so neither the fit nor anything derived from it may be quoted at another
     /// resolution without refitting.</para>
     /// </summary>
-    public sealed class WindSpeedModel
+    public sealed class WindSpeedModel : IMonthlyMarginals
     {
         /// <summary>Fewer observations than this in a month and the pooled fit is used instead.</summary>
         public const int MinimumSamplesPerMonth = 30;
@@ -104,6 +104,20 @@ namespace WeatherSynth.Climate
 
             return _monthly[month - 1];
         }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// One <c>Math.Pow</c>, where the solar model's is a bracketed Newton solve - the Weibull
+        /// quantile has a closed form and the incomplete beta's inverse does not. Since
+        /// <see cref="LatentAr1Chain"/> calls this once per generated day, it is most of why a
+        /// synthetic wind year costs so much less than a solar one.
+        /// </remarks>
+        public double Quantile(double probability, int month) =>
+            ForMonth(month).Quantile(probability);
+
+        /// <inheritdoc />
+        public double CumulativeProbability(double value, int month) =>
+            ForMonth(month).CumulativeProbability(value);
 
         /// <summary>
         /// Fits the model to a measured series.
@@ -205,7 +219,7 @@ namespace WeatherSynth.Climate
 
             // Reuses the gap-aware estimator: only genuinely consecutive days are informative
             // about a lag-1 coefficient, and this record does have two one-day holes.
-            double phi = IndexSeriesStatistics.Lag1Autocorrelation(latent);
+            double phi = SeriesStatistics.Lag1Autocorrelation(latent);
 
             // A record too short or too broken to estimate from means no persistence, not NaN
             // speeds downstream. Negative persistence is not a thing daily wind does.

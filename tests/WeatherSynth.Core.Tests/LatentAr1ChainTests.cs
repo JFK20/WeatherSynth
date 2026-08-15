@@ -9,7 +9,7 @@ namespace WeatherSynth.Core.Tests;
 /// to get right is a property of the index sequence alone: the marginal must survive untouched,
 /// the correlation must appear, and gaps must break it (knowledge.md §13).
 /// </summary>
-public class ClearSkyIndexChainTests
+public class LatentAr1ChainTests
 {
     private const double Scale = ClearSkyIndexModel.DefaultSupport;
 
@@ -20,7 +20,7 @@ public class ClearSkyIndexChainTests
     private static ClearSkyIndexModel SeasonalModel() => ClimateFixtures.SeasonalModel;
 
     private static List<(DateOnly Date, double Index)> Run(
-        ClearSkyIndexChain chain,
+        LatentAr1Chain chain,
         DateOnly start,
         int days,
         Random random
@@ -45,7 +45,7 @@ public class ClearSkyIndexChainTests
     /// the 0.137 the independent model already produced, and mixing it in here would stop this
     /// being a test of the chain. Holding the month fixed holds the marginal fixed with it.</para>
     /// </summary>
-    private static double WithinJulyLag1(ClearSkyIndexChain chain, int runs, Random random)
+    private static double WithinJulyLag1(LatentAr1Chain chain, int runs, Random random)
     {
         var start = new DateOnly(2000, 7, 1);
         var yesterday = new List<double>();
@@ -76,7 +76,7 @@ public class ClearSkyIndexChainTests
         // moving the histogram. Checked against July's own fitted CDF by KS at the 5% level.
         var model = SeasonalModel();
         var july = model.ForMonth(7);
-        var chain = new ClearSkyIndexChain(model, 0.6);
+        var chain = new LatentAr1Chain(model, 0.6);
         var random = new Random(7);
 
         // A single month, so one marginal governs the whole sample: July of 400 successive years.
@@ -97,6 +97,80 @@ public class ClearSkyIndexChainTests
             .BeLessThan(1.36 / Math.Sqrt(draws.Count));
     }
 
+    [Fact]
+    public void A_weibull_marginal_survives_the_persistence_layer_untouched()
+    {
+        // The same claim as above against the other distribution family, and the test that earns
+        // the refactor: before the chain was generalised it could not be written at all. It is
+        // also the load-bearing one for wind, because the whole seasonal cycle lives in these
+        // marginals - there is no ceiling underneath to carry it, so distorting a marginal here
+        // would distort the season itself rather than merely the shape of a ratio.
+        var model = WindFixtures.SeasonalModel;
+        var july = model.ForMonth(7);
+        var chain = new LatentAr1Chain(model, 0.6);
+        var random = new Random(7);
+
+        var draws = new List<double>();
+        for (int year = 0; year < 400; year++)
+        {
+            chain.Reset();
+            var start = new DateOnly(2000, 7, 1);
+            for (int day = 0; day < 31; day++)
+                draws.Add(chain.Next(start.AddDays(day), random));
+        }
+
+        // A Weibull is bounded below by its location parameter and unbounded above, where a Beta
+        // is bounded at both ends - so this is a different claim from the solar one, not a copy.
+        draws.Should().OnlyContain(v => v > july.Location && double.IsFinite(v));
+
+        GoodnessOfFit
+            .KolmogorovSmirnovDistance(draws, july.CumulativeProbability)
+            .Should()
+            .BeLessThan(GoodnessOfFit.CriticalValueFivePercent(draws.Count));
+    }
+
+    [Fact]
+    public void A_wind_chain_defaults_to_the_persistence_its_model_was_fitted_with()
+    {
+        var model = WindFixtures.SeasonalModel;
+
+        new LatentAr1Chain(model).Persistence.Should().Be(model.Persistence);
+    }
+
+    [Fact]
+    public void The_latent_correlation_survives_the_round_trip_through_a_weibull()
+    {
+        // What the chain actually guarantees, and the honest way to judge it: the Pearson
+        // correlation of the generated speeds depends on the marginal's shape and lands a few
+        // percent below the figure phi came from, but in latent space the agreement is exact.
+        // Measured on the real record this is 0.4443 fitted against 0.4461 generated.
+        const double phi = 0.55;
+        var model = WindFixtures.SeasonalModel;
+        var chain = new LatentAr1Chain(model, phi);
+        var random = new Random(1303);
+
+        var latent = new List<(DateOnly Date, double Value)>();
+        var start = new DateOnly(2000, 1, 1);
+        for (int day = 0; day < 40_000; day++)
+        {
+            var date = start.AddDays(day);
+            double speed = chain.Next(date, random);
+
+            // Back through the same transform the fit uses: the month's own CDF, then the
+            // inverse normal.
+            latent.Add(
+                (
+                    date,
+                    Gaussian.Quantile(
+                        Math.Clamp(model.CumulativeProbability(speed, date.Month), 1e-12, 1.0 - 1e-12)
+                    )
+                )
+            );
+        }
+
+        SeriesStatistics.Lag1Autocorrelation(latent).Should().BeApproximately(phi, 0.02);
+    }
+
     [Theory]
     [InlineData(0.0)]
     [InlineData(0.4)]
@@ -107,7 +181,7 @@ public class ClearSkyIndexChainTests
         // latent space back to the index is expected and the band below is asymmetric to allow
         // for it. This is exactly why the acceptance check in knowledge.md §13 is run on the full
         // synthetic series rather than inferred from phi.
-        var chain = new ClearSkyIndexChain(SeasonalModel(), phi);
+        var chain = new LatentAr1Chain(SeasonalModel(), phi);
 
         WithinJulyLag1(chain, runs: 2_000, random: new Random(20260731))
             .Should()
@@ -119,7 +193,7 @@ public class ClearSkyIndexChainTests
     {
         // The path the reports use to show the before-and-after, so it has to be exactly the old
         // behaviour and not merely a weak version of the new one.
-        var chain = new ClearSkyIndexChain(SeasonalModel(), 0.0);
+        var chain = new LatentAr1Chain(SeasonalModel(), 0.0);
 
         WithinJulyLag1(chain, runs: 2_000, random: new Random(11))
             .Should()
@@ -138,7 +212,7 @@ public class ClearSkyIndexChainTests
         // each pair sit in July, so the marginal is constant and the correlation measured here is
         // the chain's alone, with no seasonal component mixed in.
         var model = SeasonalModel();
-        var chain = new ClearSkyIndexChain(model, 0.7);
+        var chain = new LatentAr1Chain(model, 0.7);
         var random = new Random(12);
         var start = new DateOnly(2000, 7, 1);
 
@@ -179,7 +253,7 @@ public class ClearSkyIndexChainTests
     public void Reset_starts_a_fresh_run_rather_than_carrying_yesterday_forward()
     {
         var model = SeasonalModel();
-        var chain = new ClearSkyIndexChain(model, 0.9);
+        var chain = new LatentAr1Chain(model, 0.9);
         var start = new DateOnly(2000, 7, 1);
 
         var first = Run(chain, start, 50, new Random(5));
@@ -195,7 +269,7 @@ public class ClearSkyIndexChainTests
     {
         var model = SeasonalModel();
 
-        new ClearSkyIndexChain(model).Persistence.Should().Be(model.Persistence);
+        new LatentAr1Chain(model).Persistence.Should().Be(model.Persistence);
     }
 
     [Fact]
@@ -204,11 +278,11 @@ public class ClearSkyIndexChainTests
         var model = SeasonalModel();
 
         FluentActions
-            .Invoking(() => new ClearSkyIndexChain(model, 1.0))
+            .Invoking(() => new LatentAr1Chain(model, 1.0))
             .Should()
             .Throw<ArgumentOutOfRangeException>();
         FluentActions
-            .Invoking(() => new ClearSkyIndexChain(model, -0.2))
+            .Invoking(() => new LatentAr1Chain(model, -0.2))
             .Should()
             .Throw<ArgumentOutOfRangeException>();
     }

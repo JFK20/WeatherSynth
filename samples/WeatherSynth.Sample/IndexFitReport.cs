@@ -123,7 +123,7 @@ public static class IndexFitReport
     {
         Console.WriteLine("=== Does the generator reproduce cloud persistence? ===");
 
-        double observed = IndexSeriesStatistics.Lag1Autocorrelation(
+        double observed = SeriesStatistics.Lag1Autocorrelation(
             series.Select(d => (d.Date, d.ClearSkyIndex))
         );
 
@@ -138,10 +138,10 @@ public static class IndexFitReport
         // before the persistence layer existed - a genuine before-and-after rather than a
         // remembered number. Straight off the chain: the claim is about the index sequence, and
         // the ceiling would only multiply both sides of it by the same numbers.
-        double sampledIndependent = IndexSeriesStatistics.Lag1Autocorrelation(
+        double sampledIndependent = SeriesStatistics.Lag1Autocorrelation(
             IndexSeries(model, start, end, persistence: 0.0)
         );
-        double sampled = IndexSeriesStatistics.Lag1Autocorrelation(
+        double sampled = SeriesStatistics.Lag1Autocorrelation(
             synthetic.Select(d => (d.Date, d.ClearSkyIndex))
         );
 
@@ -238,7 +238,7 @@ public static class IndexFitReport
         double persistence
     )
     {
-        var chain = new ClearSkyIndexChain(model, persistence);
+        var chain = new LatentAr1Chain(model, persistence);
         var random = new Random(Seed);
 
         for (var date = start; date <= endInclusive; date = date.AddDays(1))

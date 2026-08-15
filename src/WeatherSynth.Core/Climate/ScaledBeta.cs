@@ -257,7 +257,7 @@ namespace WeatherSynth.Climate
         /// falls below with probability <paramref name="p"/>.
         ///
         /// <para>This is what turns a uniform into a draw with this exact marginal, which is how
-        /// <see cref="ClearSkyIndexChain"/> injects day-to-day persistence without disturbing the
+        /// <see cref="LatentAr1Chain"/> injects day-to-day persistence without disturbing the
         /// fitted shape. <see cref="Sample"/> remains the right call for an independent draw -
         /// it is exact where this is iterative.</para>
         ///

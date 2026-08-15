@@ -1,3 +1,5 @@
+using WeatherSynth.Wind;
+
 namespace WeatherSynth.Data;
 
 /// <summary>
@@ -17,14 +19,29 @@ namespace WeatherSynth.Data;
 /// Height of the anemometer above ground. Every speed in the record - and so every fitted A and
 /// γ - belongs to this height and to no other.
 /// </param>
+/// <param name="RoughnessLengthMeters">
+/// Aerodynamic roughness length of the terrain around the station, in metres. An estimate, not a
+/// measurement - see <see cref="DwdWindStations.EssenBredeney"/> for what that is worth here.
+/// </param>
 public sealed record DwdWindStation(
     int Id,
     string Name,
     double LatitudeDegrees,
     double LongitudeDegrees,
     double AltitudeMeters,
-    double AnemometerHeightMeters
-);
+    double AnemometerHeightMeters,
+    double RoughnessLengthMeters
+)
+{
+    /// <summary>
+    /// This station's anemometer as a wind site: the reference every transfer starts from.
+    ///
+    /// <para>Generating here rather than somewhere else gives a transfer factor of exactly 1.0, so
+    /// the roughness estimate above costs nothing until a caller actually asks to move the speeds
+    /// to another height.</para>
+    /// </summary>
+    public WindSite ToSite() => new(AnemometerHeightMeters, RoughnessLengthMeters);
+}
 
 /// <summary>Wind stations this project has data for.</summary>
 public static class DwdWindStations
@@ -48,6 +65,14 @@ public static class DwdWindStations
     /// <para>Coordinates are DWD's own station-list values, not fitted: unlike the solar record,
     /// nothing in a wind file constrains position, and nothing downstream of the fit depends on
     /// it. Position matters here only for judging how far the statistics can be carried.</para>
+    ///
+    /// <para><b>The roughness length is an estimate, and the weakest number in this record.</b>
+    /// Bredeney is a leafy suburb and the station sits in parkland, which puts it somewhere in
+    /// 0.3-0.5 m - between the suburban class (0.4) and something more open. 0.3 is the parkland
+    /// end of that bracket. Nothing derived from the record itself constrains it, unlike the
+    /// anemometer height, and the honest reading is that a transferred speed inherits an
+    /// uncertainty of several percent from this one number alone. It affects only transferred
+    /// results: generating at the station's own height leaves it unused.</para>
     /// </summary>
     public static readonly DwdWindStation EssenBredeney = new(
         Id: 1303,
@@ -55,6 +80,7 @@ public static class DwdWindStations
         LatitudeDegrees: 51.4041,
         LongitudeDegrees: 6.9677,
         AltitudeMeters: 150.0,
-        AnemometerHeightMeters: 15.0
+        AnemometerHeightMeters: 15.0,
+        RoughnessLengthMeters: 0.3
     );
 }

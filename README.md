@@ -55,10 +55,29 @@ The repo has 3 folders:
    - `sanity`: the original clear-sky harness (equinox/solstice totals)
    - `windsummary`: wind coverage, gaps, monthly mean speeds, the cube-law correction
    - `windfit`: fits the twelve monthly Weibull distributions and scores them (KS, persistence)
+   - `windyear`: prints one synthetic wind year at daily resolution `windyear [year] [seed]`
 
 It is built for .NET 9.0.
 
-Currently, it only supports Global Radiation, which can be used, for example, for PV generation calculations. Wind is in progress the measured record is in place and described by `windsummary`, but there is no wind generator yet.
+It supports Global Radiation, which can be used for PV generation calculations, and daily mean
+wind speed. `SyntheticWindProvider` is the wind entry point and works like the solar one:
+
+```csharp
+var wind = SyntheticWindProvider.FromDwdRecord("data/dwd_essen_wind.csv", DwdWindStations.EssenBredeney);
+SyntheticWindYear year = wind.GenerateYear(2026, seed: 42);
+
+Console.WriteLine($"{year.MeanSpeed:F2} m/s mean, windiest day {year.MaxSpeed:F2} m/s");
+
+// Somewhere higher up. Read the warning below before trusting the result.
+var hub = new WindSite(heightMeters: 100.0, roughnessLengthMeters: 0.1);
+var lifted = wind.GenerateYear(2026, seed: 42, hub);
+```
+
+**Two warnings about wind output.** Wind power goes as the cube of speed, so a daily mean speed
+is *not* enough for an energy estimate — it is low by about 25% at this station. Use
+`MeanCubedSpeed`, which is carried for exactly that reason. And the height transfer is by far the
+largest source of error in the whole library: the log law and the power law disagree by 26% over a
+15 m → 100 m extrapolation. Generating at the station's own 15 m applies no transfer at all.
 
 ## Two stations
 

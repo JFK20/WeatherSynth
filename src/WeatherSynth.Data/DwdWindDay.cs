@@ -121,7 +121,7 @@ public static class DwdWindDayAggregator
     /// <para>Days are returned in chronological order. Days absent from the source are absent
     /// here too rather than emitted empty, and anything estimating day-to-day persistence
     /// downstream has to treat those as chain breaks rather than bridge them - which is what
-    /// <see cref="WeatherSynth.Climate.ClearSkyIndexChain"/>'s gap handling already does.</para>
+    /// <see cref="WeatherSynth.Climate.LatentAr1Chain"/>'s gap handling already does.</para>
     /// </summary>
     public static IReadOnlyList<DwdWindDay> ToDays(IEnumerable<DwdWindHour> hours)
     {

@@ -92,7 +92,7 @@ public class EssenWindRecordTests
         // normal scores and comes out smaller, because the marginals re-supply the season.
         var series = complete.Select(d => (d.Date, d.MeanSpeed));
 
-        IndexSeriesStatistics
+        SeriesStatistics
             .Lag1Autocorrelation(series)
             .Should()
             .BeApproximately(0.5287, 0.0005);
@@ -190,6 +190,66 @@ public class EssenWindRecordTests
         // normal scores, which takes the seasonal cycle out. The twelve marginals put it back.
         model.Persistence.Should().BeApproximately(0.444, 0.005);
         model.Persistence.Should().BeLessThan(0.5287);
+    }
+
+    [Fact]
+    public void A_generated_run_reproduces_the_records_annual_mean_and_seasons()
+    {
+        if (Days is null)
+            return;
+
+        // The end-to-end acceptance check: everything from the raw file through the fit, the
+        // chain and the generator, measured against the record it came from.
+        //
+        // Two centuries rather than one year, because a generated year carries real weather
+        // variation: persistence cuts its effective sample size to about 140 days, so a single
+        // year's mean moves by ±0.1 m/s between seeds. That spread is the model working, not an
+        // error - so the acceptance has to be on the long-run mean, and the run has to be long
+        // enough that the tolerances below are tighter than the noise rather than hiding it.
+        var provider = SyntheticWindProvider.FromStationDays(Days, DwdWindStations.EssenBredeney);
+        var generated = provider
+            .Generate(new DateOnly(1900, 1, 1), new DateOnly(2099, 12, 31), seed: 20260803)
+            .ToList();
+
+        var measured = CompleteDays()!;
+
+        generated
+            .Average(d => d.MeanSpeed)
+            .Should()
+            .BeApproximately(measured.Average(d => d.MeanSpeed), 0.02);
+
+        // The seasonal cycle survives the round trip. It has nowhere else to live: there is no
+        // ceiling underneath carrying it, so if the twelve marginals did not reproduce it here,
+        // it would be gone.
+        var generatedByMonth = generated
+            .GroupBy(d => d.Date.Month)
+            .ToDictionary(g => g.Key, g => g.Average(d => d.MeanSpeed));
+        var measuredByMonth = measured
+            .GroupBy(d => d.Date.Month)
+            .ToDictionary(g => g.Key, g => g.Average(d => d.MeanSpeed));
+
+        // 0.08 m/s covers two things: the fit's own error against each month's observed mean
+        // (about 0.01), and the sampling error of a month drawn 200 times with persistence
+        // (about 0.03). February is the tightest, being the shortest month.
+        for (int month = 1; month <= 12; month++)
+            generatedByMonth[month].Should().BeApproximately(measuredByMonth[month], 0.08);
+    }
+
+    [Fact]
+    public void Generating_at_the_station_applies_no_transfer_at_all()
+    {
+        if (Days is null)
+            return;
+
+        // The roughness length on the station record is an estimate in a 0.3-0.5 m bracket, so it
+        // matters that the default path does not touch it: at the fitting height the factor is
+        // exactly one and a generated speed is the model's own draw.
+        var provider = SyntheticWindProvider.FromStationDays(Days, DwdWindStations.EssenBredeney);
+
+        provider.CreateGenerator().TransferFactor.Should().Be(1.0);
+
+        var year = provider.GenerateYear(2026, seed: 42);
+        year.Days.Should().OnlyContain(d => d.MeanSpeed == d.MeanSpeedAtReference);
     }
 
     [Fact]

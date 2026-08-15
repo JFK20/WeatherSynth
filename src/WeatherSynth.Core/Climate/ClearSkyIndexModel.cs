@@ -21,12 +21,12 @@ namespace WeatherSynth.Climate
     ///
     /// <para><b>The marginals alone are not enough.</b> Sampling from these twelve curves
     /// independently per day gives the right histogram and the wrong sequences - real cloudy
-    /// spells cluster, independent draws scatter. <see cref="ClearSkyIndexChain"/> supplies the
+    /// spells cluster, independent draws scatter. <see cref="LatentAr1Chain"/> supplies the
     /// missing ordering using <see cref="Persistence"/>, without touching the shapes;
-    /// <see cref="IndexSeriesStatistics.Lag1Autocorrelation"/> on observed against synthetic
+    /// <see cref="SeriesStatistics.Lag1Autocorrelation"/> on observed against synthetic
     /// output is what says whether it worked.</para>
     /// </summary>
-    public sealed class ClearSkyIndexModel
+    public sealed class ClearSkyIndexModel : IMonthlyMarginals
     {
         /// <summary>
         /// Default upper end of the support.
@@ -95,6 +95,19 @@ namespace WeatherSynth.Climate
 
             return _monthly[month - 1];
         }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// The month's fit reached through <see cref="IMonthlyMarginals"/>, which is how
+        /// <see cref="LatentAr1Chain"/> reads a value back out of latent space without learning
+        /// that the distribution behind it is a Beta.
+        /// </remarks>
+        public double Quantile(double probability, int month) =>
+            ForMonth(month).Quantile(probability);
+
+        /// <inheritdoc />
+        public double CumulativeProbability(double value, int month) =>
+            ForMonth(month).CumulativeProbability(value);
 
         /// <summary>
         /// Fits the model to a measured series.
@@ -186,7 +199,7 @@ namespace WeatherSynth.Climate
 
             // Reuses the gap-aware estimator, which is exactly right here: only genuinely
             // consecutive days are informative about a lag-1 coefficient.
-            double phi = IndexSeriesStatistics.Lag1Autocorrelation(latent);
+            double phi = SeriesStatistics.Lag1Autocorrelation(latent);
 
             // A record too short or too broken to estimate from means no persistence, not NaN
             // irradiance downstream. Negative persistence is not a thing daily cloud does.
@@ -202,76 +215,8 @@ namespace WeatherSynth.Climate
         ///
         /// <para>Right for a single day, wrong for a series: this is the marginal on its own,
         /// which is the histogram-right, sequence-wrong behaviour described above. Use
-        /// <see cref="ClearSkyIndexChain"/> for anything longer than one day.</para>
+        /// <see cref="LatentAr1Chain"/> for anything longer than one day.</para>
         /// </summary>
         public double Sample(int month, Random random) => ForMonth(month).Sample(random);
-    }
-
-    /// <summary>
-    /// Diagnostics that describe a series of daily index values rather than fit anything to it.
-    /// </summary>
-    public static class IndexSeriesStatistics
-    {
-        /// <summary>
-        /// Correlation between each day's index and the previous day's.
-        ///
-        /// <para>The single number that says whether a generator reproduces cloud persistence.
-        /// Independent sampling gives ~0 by construction whatever its histogram looks like;
-        /// measured daily solar records typically land around 0.3-0.5. This is the acceptance
-        /// check on <see cref="ClearSkyIndexChain"/>, and it is also what fits the chain's
-        /// coefficient - run over the record's normal scores it yields
-        /// <see cref="ClearSkyIndexModel.Persistence"/> directly.</para>
-        ///
-        /// <para>Only genuinely consecutive calendar days count as pairs, so gaps in the record
-        /// are skipped rather than being treated as adjacent.</para>
-        /// </summary>
-        /// <returns>The lag-1 correlation, or NaN if there are fewer than two consecutive pairs.</returns>
-        public static double Lag1Autocorrelation(IEnumerable<(DateOnly Date, double Index)> series)
-        {
-            if (series is null)
-                throw new ArgumentNullException(nameof(series));
-
-            var ordered = series.OrderBy(d => d.Date).ToList();
-
-            var today = new List<double>();
-            var yesterday = new List<double>();
-
-            for (int i = 1; i < ordered.Count; i++)
-            {
-                if (ordered[i].Date.DayNumber - ordered[i - 1].Date.DayNumber != 1)
-                    continue;
-                if (double.IsNaN(ordered[i].Index) || double.IsNaN(ordered[i - 1].Index))
-                    continue;
-
-                today.Add(ordered[i].Index);
-                yesterday.Add(ordered[i - 1].Index);
-            }
-
-            if (today.Count < 2)
-                return double.NaN;
-
-            return Correlation(yesterday, today);
-        }
-
-        private static double Correlation(IReadOnlyList<double> x, IReadOnlyList<double> y)
-        {
-            double meanX = x.Average();
-            double meanY = y.Average();
-
-            double covariance = 0.0,
-                varianceX = 0.0,
-                varianceY = 0.0;
-            for (int i = 0; i < x.Count; i++)
-            {
-                double dx = x[i] - meanX;
-                double dy = y[i] - meanY;
-                covariance += dx * dy;
-                varianceX += dx * dx;
-                varianceY += dy * dy;
-            }
-
-            double denominator = Math.Sqrt(varianceX * varianceY);
-            return denominator > 0.0 ? covariance / denominator : double.NaN;
-        }
     }
 }

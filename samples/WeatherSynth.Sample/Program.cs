@@ -9,7 +9,7 @@ namespace WeatherSynth.Sample;
 internal static class Program
 {
     /// <summary>Commands reading the wind record rather than the solar one.</summary>
-    private static readonly string[] WindCommands = { "windsummary", "windfit" };
+    private static readonly string[] WindCommands = { "windsummary", "windfit", "windyear" };
 
     private static int Main(string[] args)
     {
@@ -30,7 +30,7 @@ internal static class Program
 
         // The two records are different files at different stations, so which one to read is
         // decided before anything is read at all rather than by loading both.
-        return WindCommands.Contains(command) ? RunWind(command) : RunSolar(command, args);
+        return WindCommands.Contains(command) ? RunWind(command, args) : RunSolar(command, args);
     }
 
     private static int RunSolar(string command, string[] args)
@@ -100,7 +100,7 @@ internal static class Program
                 Console.Error.WriteLine(
                     $"Unknown command '{command}'. Try: summary, zenith, decompose, kt, "
                         + "calibrate, fit, year, viz, impact, fitcoords, sanity, windsummary, "
-                        + "windfit"
+                        + "windfit, windyear"
                 );
                 return 1;
         }
@@ -108,7 +108,7 @@ internal static class Program
         return 0;
     }
 
-    private static int RunWind(string command)
+    private static int RunWind(string command, string[] args)
     {
         string? dataPath = RepositoryData.TryLocateEssenWind();
         if (dataPath is null)
@@ -138,6 +138,10 @@ internal static class Program
 
             case "windfit":
                 WindFitReport.Run(days, station);
+                break;
+
+            case "windyear":
+                WindYearReport.Run(days, station, args);
                 break;
 
             default:

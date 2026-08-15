@@ -115,7 +115,7 @@ public static class WindSummary
         Console.WriteLine("=== Persistence ===");
         Console.WriteLine(
             $"  lag-1 of daily means : "
-                + $"{WeatherSynth.Climate.IndexSeriesStatistics.Lag1Autocorrelation(series):F4}"
+                + $"{WeatherSynth.Climate.SeriesStatistics.Lag1Autocorrelation(series):F4}"
         );
         Console.WriteLine(
             "  Higher than solar's 0.437, as expected - wind is more persistent than cloud."

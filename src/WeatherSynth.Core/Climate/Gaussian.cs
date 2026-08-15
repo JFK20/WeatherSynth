@@ -8,7 +8,7 @@ namespace WeatherSynth.Climate
     /// <para>Present only because the persistence layer needs it. The clear-sky index itself is
     /// never modelled as normal - it is bounded on both ends and skewed, which is why
     /// <see cref="ScaledBeta"/> exists. What the normal is used for here is the <i>latent</i>
-    /// variable of the AR(1) chain in <see cref="ClearSkyIndexChain"/>: an unbounded space where
+    /// variable of the AR(1) chain in <see cref="LatentAr1Chain"/>: an unbounded space where
     /// "yesterday times phi plus noise" is a sensible thing to write, from which
     /// <see cref="Cdf"/> maps back onto a uniform and thence onto the fitted Beta.</para>
     ///

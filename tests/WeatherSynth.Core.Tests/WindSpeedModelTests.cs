@@ -6,34 +6,12 @@ namespace WeatherSynth.Core.Tests;
 
 public class WindSpeedModelTests
 {
-    /// <summary>
-    /// The Weibull the fixture record draws from on a given date: windy in winter, calm in late
-    /// summer, like the station the model is built for. Everything seasonal lives here, because
-    /// in the wind model there is no ceiling for it to live in.
-    /// </summary>
-    private static Weibull SeasonalShape(DateOnly date)
-    {
-        double seasonal = 3.25 + 0.55 * Math.Cos((date.DayOfYear - 15) / 365.25 * 2.0 * Math.PI);
-        return new Weibull(shape: 1.9, scale: seasonal - 1.0, location: 1.0);
-    }
+    // The fixture record lives in WindFixtures, shared with the chain suite so that "the marginal
+    // survives persistence" is a claim about the same marginals this suite scores.
+    private static Weibull SeasonalShape(DateOnly date) => WindFixtures.SeasonalShape(date);
 
-    /// <summary>A record with a deliberate seasonal swing and no day-to-day persistence.</summary>
-    private static List<DailyWindSpeed> SeasonalSeries(int years = 15, int seed = 4242)
-    {
-        var random = new Random(seed);
-        var series = new List<DailyWindSpeed>();
-
-        for (var date = new DateOnly(2010, 1, 1); date.Year < 2010 + years; date = date.AddDays(1))
-        {
-            double speed = SeasonalShape(date).Sample(random);
-
-            // A plausible intra-day spread, so the energy pattern factor is a real number rather
-            // than a constant 1.
-            series.Add(new DailyWindSpeed(date, speed, speed * speed * speed * 1.25));
-        }
-
-        return series;
-    }
+    private static List<DailyWindSpeed> SeasonalSeries(int years = 15, int seed = 4242) =>
+        WindFixtures.SeasonalSeries(years, seed);
 
     [Fact]
     public void Recovers_the_monthly_distributions_it_was_fitted_from()
@@ -128,7 +106,7 @@ public class WindSpeedModelTests
         // The fixture record has a seasonal cycle and no day-to-day memory, so phi - which is
         // measured with the season transformed out - must come back at essentially zero even
         // though the raw lag-1 does not.
-        double raw = IndexSeriesStatistics.Lag1Autocorrelation(
+        double raw = SeriesStatistics.Lag1Autocorrelation(
             series.Select(d => (d.Date, d.MeanSpeed))
         );
 
