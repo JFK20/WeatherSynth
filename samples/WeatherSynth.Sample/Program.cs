@@ -9,7 +9,7 @@ namespace WeatherSynth.Sample;
 internal static class Program
 {
     /// <summary>Commands reading the wind record rather than the solar one.</summary>
-    private static readonly string[] WindCommands = { "windsummary" };
+    private static readonly string[] WindCommands = { "windsummary", "windfit" };
 
     private static int Main(string[] args)
     {
@@ -99,7 +99,8 @@ internal static class Program
             default:
                 Console.Error.WriteLine(
                     $"Unknown command '{command}'. Try: summary, zenith, decompose, kt, "
-                        + "calibrate, fit, year, viz, impact, fitcoords, sanity, windsummary"
+                        + "calibrate, fit, year, viz, impact, fitcoords, sanity, windsummary, "
+                        + "windfit"
                 );
                 return 1;
         }
@@ -133,6 +134,10 @@ internal static class Program
         {
             case "windsummary":
                 WindSummary.Run(hours, days, station);
+                break;
+
+            case "windfit":
+                WindFitReport.Run(days, station);
                 break;
 
             default:

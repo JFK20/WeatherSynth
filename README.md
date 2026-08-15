@@ -54,6 +54,7 @@ The repo has 3 folders:
    - `fitcoords`: recovers station coordinates from ZENIT by residual minimization
    - `sanity`: the original clear-sky harness (equinox/solstice totals)
    - `windsummary`: wind coverage, gaps, monthly mean speeds, the cube-law correction
+   - `windfit`: fits the twelve monthly Weibull distributions and scores them (KS, persistence)
 
 It is built for .NET 9.0.
 

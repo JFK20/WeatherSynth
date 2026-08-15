@@ -112,26 +112,30 @@ public class EssenWindRecordTests
         factors.Should().OnlyContain(f => f >= 1.0);
     }
 
+    /// <summary>The model fitted from the real record, built once - twelve MLE fits is not free.</summary>
+    private static readonly Lazy<WindSpeedModel?> LazyModel = new(() =>
+        Days is null
+            ? null
+            : WindSpeedModel.Fit(
+                WindSpeedSeriesBuilder.Build(Days),
+                DwdWindStations.EssenBredeney.AnemometerHeightMeters
+            )
+    );
+
     [Fact]
     public void Fits_a_three_parameter_weibull_that_passes_every_month()
     {
-        if (CompleteDays() is not { } complete)
+        if (LazyModel.Value is not { } model || CompleteDays() is not { } complete)
             return;
 
-        // The finding that decided the distribution: the textbook two-parameter Weibull passes
-        // 3 months of 12 on this record, the three-parameter one passes all 12, and freeing gamma
-        // pulls k from 2.6-3.4 back into the 1.7-2.2 canonical for wind.
+        // The acceptance check on the whole wind fit, through the path the library actually uses.
         foreach (var group in complete.GroupBy(d => d.Date.Month).OrderBy(g => g.Key))
         {
             var speeds = group.Select(d => d.MeanSpeed).ToList();
+            var fit = model.ForMonth(group.Key);
 
-            var fit = Weibull.FitByMaximumLikelihood(speeds);
-            double distance = GoodnessOfFit.KolmogorovSmirnovDistance(
-                speeds,
-                fit.CumulativeProbability
-            );
-
-            distance
+            GoodnessOfFit
+                .KolmogorovSmirnovDistance(speeds, fit.CumulativeProbability)
                 .Should()
                 .BeLessThan(
                     GoodnessOfFit.CriticalValueFivePercent(speeds.Count),
@@ -139,9 +143,69 @@ public class EssenWindRecordTests
                     group.Key
                 );
 
+            // k back in the range canonical for wind, which is what freeing gamma buys: pinned
+            // at zero these same months fit k at 2.56-3.43 instead.
             fit.Shape.Should().BeInRange(1.6, 2.3);
             fit.Location.Should().BeInRange(0.5, 1.5);
             fit.Mean.Should().BeApproximately(speeds.Average(), 0.05);
         }
+    }
+
+    [Fact]
+    public void The_third_parameter_is_what_makes_the_fit_pass()
+    {
+        if (LazyModel.Value is not { } model || CompleteDays() is not { } complete)
+            return;
+
+        // The measurement the modelling decision rests on, re-made rather than quoted. Both fits
+        // by MLE on the same days, so what is compared is the parameter and not the method.
+        int twoParameterPasses = 0;
+
+        foreach (var group in complete.GroupBy(d => d.Date.Month))
+        {
+            var speeds = group.Select(d => d.MeanSpeed).ToList();
+            var pinned = Weibull.FitByMaximumLikelihood(speeds, location: 0.0);
+
+            if (
+                GoodnessOfFit.KolmogorovSmirnovDistance(speeds, pinned.CumulativeProbability)
+                < GoodnessOfFit.CriticalValueFivePercent(speeds.Count)
+            )
+                twoParameterPasses++;
+
+            // Pinning gamma at zero forces density down to speeds this site never sees, and the
+            // fit pays for it by inflating k well outside the range wind actually occupies.
+            pinned.Shape.Should().BeGreaterThan(model.ForMonth(group.Key).Shape);
+        }
+
+        twoParameterPasses.Should().Be(3);
+    }
+
+    [Fact]
+    public void Fits_the_persistence_the_chain_will_need()
+    {
+        if (LazyModel.Value is not { } model)
+            return;
+
+        // Smaller than the raw 0.5287 measured above, and that is the point: phi is fitted on
+        // normal scores, which takes the seasonal cycle out. The twelve marginals put it back.
+        model.Persistence.Should().BeApproximately(0.444, 0.005);
+        model.Persistence.Should().BeLessThan(0.5287);
+    }
+
+    [Fact]
+    public void The_fitted_model_reproduces_the_records_annual_mean()
+    {
+        if (LazyModel.Value is not { } model || CompleteDays() is not { } complete)
+            return;
+
+        // Weighted by calendar month, since the months differ in length. Far off 3.22 m/s would
+        // mean a height transfer applied twice, A read as the mean, or the wrong resolution.
+        double fitted =
+            Enumerable
+                .Range(1, 12)
+                .Sum(month => model.ForMonth(month).Mean * DateTime.DaysInMonth(2001, month)) / 365.0;
+
+        fitted.Should().BeApproximately(complete.Average(d => d.MeanSpeed), 0.01);
+        model.ReferenceHeightMeters.Should().Be(15.0);
     }
 }
