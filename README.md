@@ -47,7 +47,7 @@ The repo has 3 folders:
    - `calibrate`: fits Linke turbidity against measured cloudless days
    - `fit`: fits the monthly Beta distributions and scores them (KS, persistence)
    - `year`: prints one synthetic year at daily resolution `year [year] [seed]`
-   - `viz`: writes `viz/index.html`, the self-contained visualization page
+   - `viz`: writes `viz/index.html`, a self-contained page with a solar/wind switch
    - `zenith`: solar position vs. the DWD ZENIT column (151k reference angles)
    - `decompose`: splits the zenith residual into declination vs. hour-angle error
    - `impact`: what the zenith residual costs on daily clear-sky GHI

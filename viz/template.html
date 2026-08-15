@@ -77,6 +77,25 @@
   }
   .theme-toggle:hover { color: var(--text-primary); }
 
+  /* Resource switch. A segmented control rather than tabs: there are exactly two, they are
+     peers, and the page is one document either way. */
+  .modes {
+    display: inline-flex; gap: .25rem; margin: 1.1rem 0 0;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 999px; padding: .25rem;
+  }
+  .modes button {
+    font: inherit; font-size: .86rem; cursor: pointer;
+    background: transparent; color: var(--text-secondary);
+    border: 0; border-radius: 999px; padding: .38rem 1.1rem;
+  }
+  .modes button:hover { color: var(--text-primary); }
+  .modes button[aria-selected="true"] {
+    background: var(--surface-0); color: var(--text-primary);
+    box-shadow: var(--shadow); font-weight: 600;
+  }
+  .modes button:focus-visible { outline: 2px solid var(--measured); outline-offset: 2px; }
+
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
   .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: .9rem 1rem; box-shadow: var(--shadow); }
   .tile .label { font-size: .78rem; color: var(--text-secondary); margin-bottom: .3rem; }
@@ -105,6 +124,11 @@
   .legend span { display: inline-flex; align-items: center; gap: .4rem; }
   .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
   .swatch.line { height: 3px; border-radius: 2px; width: 14px; }
+  /* The legend has to look like the mark: this series is drawn dashed, so its swatch is too. */
+  .swatch.dashed {
+    height: 3px; border-radius: 0; width: 16px; background: none;
+    background-image: repeating-linear-gradient(to right, currentColor 0 5px, transparent 5px 9px);
+  }
 
   .plot { width: 100%; overflow-x: auto; }
   svg { display: block; width: 100%; height: auto; }
@@ -149,13 +173,17 @@
 
 <div class="wrap">
   <header>
-    <h1>Stochastic solar model — the fitted clear-sky index</h1>
-    <p class="sub">
+    <h1 id="pageTitle">Stochastic weather model — the fitted clear-sky index</h1>
+    <p class="sub" id="pageSub">
       Daily irradiance is never modelled directly. It is split into a deterministic ceiling
       (solar geometry and atmosphere) and a bounded random fraction of it, the
       <strong>clear-sky index</strong>. This page shows the distribution fitted to the measured
       record, and what a synthetic record drawn from it does and does not reproduce.
     </p>
+    <div class="modes" id="modes" role="tablist" aria-label="Resource">
+      <button type="button" role="tab" id="modeSolar" aria-selected="true" aria-controls="solarPanels">Solar</button>
+      <button type="button" role="tab" id="modeWind" aria-selected="false" aria-controls="windPanels">Wind</button>
+    </div>
   </header>
 
   <div class="tiles" id="tiles"></div>
@@ -166,10 +194,12 @@
       <select id="monthSelect"></select>
     </div>
     <div class="field">
-      <label for="yearSelect">Year — scopes the daily-irradiation panels</label>
+      <label for="yearSelect" id="yearLabel">Year — scopes the daily-irradiation panels</label>
       <select id="yearSelect"></select>
     </div>
   </div>
+
+  <div id="solarPanels">
 
   <section class="card">
     <h2>The distribution being modelled</h2>
@@ -244,6 +274,102 @@
     </table>
   </section>
 
+  </div><!-- /solarPanels -->
+
+  <div id="windPanels" hidden>
+
+  <section class="card">
+    <h2>The distribution being modelled</h2>
+    <p class="caption">
+      The measured histogram against two fitted Weibulls. Wind has <strong>no ceiling to divide
+      out</strong>, so unlike the solar half the modelled quantity is the speed itself — m/s, at
+      one height, over one averaging window. The textbook two-parameter Weibull must put density
+      all the way down to zero; freeing a location parameter γ lets the curve start where this
+      site's daily means actually start, around 1 m/s.
+    </p>
+    <div class="legend">
+      <span><i class="swatch" style="background: var(--measured)"></i>Measured days</span>
+      <span><i class="swatch line" style="background: var(--modelled)"></i>Fitted 3-parameter Weibull</span>
+      <span><i class="swatch dashed" style="color: var(--ceiling)"></i>2-parameter Weibull (γ pinned at 0)</span>
+    </div>
+    <div class="plot"><svg id="windDistChart" viewBox="0 0 760 330" role="img" aria-label="Histogram of measured daily mean wind speed with the two- and three-parameter Weibull densities overlaid"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>Seasonal profile</h2>
+    <p class="caption">
+      One Weibull per calendar month. <strong>The whole seasonal cycle lives in these twelve
+      fits</strong> — there is no deterministic ceiling underneath carrying it, as there is for
+      solar. Replacing them with a single pooled fit would not lose a refinement, it would lose
+      the seasons.
+    </p>
+    <div class="legend">
+      <span><i class="swatch line" style="background: var(--measured)"></i>Measured monthly mean</span>
+      <span><i class="swatch line" style="background: var(--modelled)"></i>Synthetic monthly mean</span>
+    </div>
+    <div class="plot"><svg id="windSeasonChart" viewBox="0 0 760 300" role="img" aria-label="Monthly mean wind speed, measured against synthetic"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>A year of daily mean wind speed</h2>
+    <p class="caption">
+      The same year, measured and generated. As with solar, the totals and the spread agree and
+      the texture is what to look at — real calm and windy spells run for days at a time.
+      Persistence is stronger here than for cloud: a measured lag-1 of 0.53 against solar's 0.44.
+    </p>
+    <div class="legend">
+      <span><i class="swatch" style="background: var(--measured)"></i>Measured daily mean</span>
+      <span><i class="swatch" style="background: var(--modelled)"></i>Synthetic daily mean</span>
+    </div>
+    <div class="smalls">
+      <div class="plot"><svg id="windYearMeasured" viewBox="0 0 400 260" role="img" aria-label="Measured daily mean wind speed across one year"></svg></div>
+      <div class="plot"><svg id="windYearSynthetic" viewBox="0 0 400 260" role="img" aria-label="Synthetic daily mean wind speed across one year"></svg></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Does the model remember yesterday?</h2>
+    <p class="caption">
+      The same latent AR(1) and Gaussian copula the solar half uses — the chain never learns
+      whether the distribution behind it is a Beta or a Weibull. <strong>Judge it in latent
+      space, not here:</strong> a copula reproduces the hidden correlation exactly, while the
+      correlation of the speeds themselves depends on the marginal's shape, so wind lands a few
+      percent short of its measured figure where solar matches to four digits.
+    </p>
+    <div class="smalls">
+      <div class="plot"><svg id="windLagMeasured" viewBox="0 0 400 300" role="img" aria-label="Measured daily mean wind speed today against yesterday"></svg></div>
+      <div class="plot"><svg id="windLagSynthetic" viewBox="0 0 400 300" role="img" aria-label="Synthetic daily mean wind speed today against yesterday"></svg></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>The cube law, and what the model does not reproduce</h2>
+    <p class="caption">
+      Wind power goes as <strong>v³</strong>, and the mean of cubes always exceeds the cube of the
+      mean — so cubing a daily mean speed understates that day's energy. The measured correction
+      varies day to day, drawn here. <strong>The model applies the record's average instead of
+      drawing one</strong>, the single value marked below, which fixes the systematic bias and
+      flattens the spread. Right for an annual yield; too smooth for anything that cares about
+      the distribution of daily energy.
+    </p>
+    <div class="legend">
+      <span><i class="swatch" style="background: var(--measured)"></i>Measured days</span>
+      <span><i class="swatch line" style="background: var(--modelled)"></i>The single value the model applies</span>
+    </div>
+    <div class="plot"><svg id="windCubeChart" viewBox="0 0 760 300" role="img" aria-label="Distribution of the measured daily energy pattern factor, with the model's constant marked"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>The model itself</h2>
+    <table id="windFitTable">
+      <caption>
+        Twelve triples plus one persistence coefficient are the entire learned model.
+      </caption>
+    </table>
+  </section>
+
+  </div><!-- /windPanels -->
+
   <p class="footnote" id="footnote"></p>
 </div>
 
@@ -251,6 +377,8 @@
 
 <script>
 const DATA = /*__DATA__*/;
+const SOLAR = DATA.solar;
+const WIND = DATA.wind || null;
 
 /* ---------- small helpers ---------- */
 
@@ -291,7 +419,7 @@ function dotPath(points, x, y) {
 
 /* ---------- data preparation ---------- */
 
-const START_MS = Date.parse(DATA.startDate + "T00:00:00Z");
+const START_MS = Date.parse(SOLAR.startDate + "T00:00:00Z");
 const dateOf = offset => new Date(START_MS + offset * DAY_MS);
 
 function decorate(track) {
@@ -307,32 +435,57 @@ function decorate(track) {
     // Irradiation is not transmitted: it is exactly index x ceiling.
     ghi[i] = track.index[i] * track.ceiling[i] / 1000;
   }
-  return { ...track, month, year, dayOfYear, ghi, length: n };
+  // `value` is the quantity the shared helpers below work on, so one set of them serves both
+  // resources: the clear-sky index here, the daily mean speed for wind.
+  return { ...track, value: track.index, month, year, dayOfYear, ghi, length: n };
 }
 
-const measured = decorate(DATA.observed);
-const synthetic = decorate(DATA.synthetic);
+function decorateWind(track) {
+  const n = track.offset.length;
+  const month = new Int8Array(n), year = new Int16Array(n), dayOfYear = new Int16Array(n);
+  const startMs = Date.parse(WIND.startDate + "T00:00:00Z");
+
+  for (let i = 0; i < n; i++) {
+    const date = new Date(startMs + track.offset[i] * DAY_MS);
+    month[i] = date.getUTCMonth();
+    year[i] = date.getUTCFullYear();
+    dayOfYear[i] = Math.round((date - Date.UTC(year[i], 0, 1)) / DAY_MS) + 1;
+  }
+  return { ...track, value: track.speed, month, year, dayOfYear, length: n };
+}
+
+const measured = decorate(SOLAR.observed);
+const synthetic = decorate(SOLAR.synthetic);
+
+const windMeasured = WIND ? decorateWind(WIND.observed) : null;
+const windSynthetic = WIND ? decorateWind(WIND.synthetic) : null;
 
 /* Consecutive-day pairs only. Joining across a gap would invent a transition that never
-   happened, and the measured record has plenty of gaps. */
+   happened, and both records have gaps. */
 function lagPairs(track) {
   const pairs = [];
   for (let i = 1; i < track.length; i++) {
     if (track.offset[i] - track.offset[i - 1] !== 1) continue;
-    pairs.push([track.index[i - 1], track.index[i]]);
+    pairs.push([track.value[i - 1], track.value[i]]);
   }
   return pairs;
 }
 
 function monthlyMeans(track) {
   const sums = new Array(12).fill(0), counts = new Array(12).fill(0);
-  for (let i = 0; i < track.length; i++) { sums[track.month[i]] += track.index[i]; counts[track.month[i]]++; }
+  for (let i = 0; i < track.length; i++) { sums[track.month[i]] += track.value[i]; counts[track.month[i]]++; }
   return sums.map((sum, i) => counts[i] ? sum / counts[i] : NaN);
 }
 
-const yearsAvailable = [...new Set(Array.from(measured.year))]
-  .filter(y => Array.from(measured.year).filter(v => v === y).length > 340)
-  .sort((a, b) => a - b);
+function fullYears(track) {
+  const years = Array.from(track.year);
+  return [...new Set(years)]
+    .filter(y => years.filter(v => v === y).length > 340)
+    .sort((a, b) => a - b);
+}
+
+const yearsAvailable = fullYears(measured);
+const windYearsAvailable = windMeasured ? fullYears(windMeasured) : [];
 
 /* ---------- tooltip ---------- */
 
@@ -388,7 +541,7 @@ function drawDistribution(monthIndex) {
   clear(svg);
 
   const plot = { left: 58, right: 738, top: 18, bottom: 272 };
-  const support = DATA.support;
+  const support = SOLAR.support;
   const binWidth = support / BINS;
 
   const values = [];
@@ -401,7 +554,7 @@ function drawDistribution(monthIndex) {
   // Normalised to a density so the bars and the fitted curve share one y-axis.
   const density = counts.map(c => c / (values.length * binWidth));
 
-  const fit = monthIndex === null ? null : DATA.months[monthIndex];
+  const fit = monthIndex === null ? null : SOLAR.months[monthIndex];
   const curve = fit ? fit.density : null;
 
   const yMax = Math.max(Math.max(...density), curve ? Math.max(...curve) : 0) * 1.12;
@@ -520,9 +673,9 @@ function drawSeason(selectedMonth) {
     band.addEventListener("pointermove", e => showTip(e, MONTH_NAMES[i], [
       ["Measured", fmt(measuredMeans[i], 3)],
       ["Synthetic", fmt(syntheticMeans[i], 3)],
-      ["Fitted Beta α", fmt(DATA.months[i].alpha, 2)],
-      ["Fitted Beta β", fmt(DATA.months[i].beta, 2)],
-      ["Days measured", DATA.months[i].days.toLocaleString()]
+      ["Fitted Beta α", fmt(SOLAR.months[i].alpha, 2)],
+      ["Fitted Beta β", fmt(SOLAR.months[i].beta, 2)],
+      ["Days measured", SOLAR.months[i].days.toLocaleString()]
     ]));
     band.addEventListener("pointerleave", hideTip);
     svg.appendChild(band);
@@ -599,7 +752,7 @@ function drawLag(svgId, pairs, color, title, correlation) {
   clear(svg);
 
   const plot = { left: 54, right: 380, top: 48, bottom: 240 };
-  const support = DATA.support;
+  const support = SOLAR.support;
   const x = scale(0, support, plot.left, plot.right);
   const y = scale(0, support, plot.bottom, plot.top);
 
@@ -658,12 +811,12 @@ function drawLag(svgId, pairs, color, title, correlation) {
 
 function drawTiles() {
   const tiles = [
-    ["Days fitted", measured.length.toLocaleString(), "", `${DATA.startDate} to ${DATA.endDate}`],
+    ["Days fitted", measured.length.toLocaleString(), "", `${SOLAR.startDate} to ${SOLAR.endDate}`],
     ["Mean clear-sky index", fmt(monthlyMeansOverall(measured), 3), "", "1.0 would be a permanently cloudless site"],
-    ["Annual GHI, measured", Math.round(DATA.annualKWh.observed).toLocaleString(), " kWh/m²",
-      `Synthetic: ${Math.round(DATA.annualKWh.synthetic).toLocaleString()} kWh/m² (${(100 * (DATA.annualKWh.synthetic - DATA.annualKWh.observed) / DATA.annualKWh.observed).toFixed(1)}%)`],
-    ["Persistence, lag-1 r", fmt(DATA.autocorrelation.synthetic, 2), "",
-      `${fmt(DATA.autocorrelation.observed, 2)} measured, ${fmt(DATA.autocorrelation.independent, 2)} without the AR(1) term (φ = ${fmt(DATA.autocorrelation.phi, 2)})`]
+    ["Annual GHI, measured", Math.round(SOLAR.annualKWh.observed).toLocaleString(), " kWh/m²",
+      `Synthetic: ${Math.round(SOLAR.annualKWh.synthetic).toLocaleString()} kWh/m² (${(100 * (SOLAR.annualKWh.synthetic - SOLAR.annualKWh.observed) / SOLAR.annualKWh.observed).toFixed(1)}%)`],
+    ["Persistence, lag-1 r", fmt(SOLAR.autocorrelation.synthetic, 2), "",
+      `${fmt(SOLAR.autocorrelation.observed, 2)} measured, ${fmt(SOLAR.autocorrelation.independent, 2)} without the AR(1) term (φ = ${fmt(SOLAR.autocorrelation.phi, 2)})`]
   ];
 
   document.getElementById("tiles").innerHTML = tiles.map(([label, value, unit, note]) => `
@@ -681,7 +834,7 @@ function monthlyMeansOverall(track) {
 }
 
 function drawTable() {
-  const rows = DATA.months.map(m => `
+  const rows = SOLAR.months.map(m => `
     <tr>
       <td>${MONTH_NAMES[m.month - 1]}</td>
       <td>${m.days.toLocaleString()}</td>
@@ -692,8 +845,8 @@ function drawTable() {
       <td>${m.exceedingCeiling} (${(100 * m.exceedingCeiling / m.days).toFixed(1)}%)</td>
     </tr>`).join("");
 
-  const totalDays = DATA.months.reduce((s, m) => s + m.days, 0);
-  const totalOver = DATA.months.reduce((s, m) => s + m.exceedingCeiling, 0);
+  const totalDays = SOLAR.months.reduce((s, m) => s + m.days, 0);
+  const totalOver = SOLAR.months.reduce((s, m) => s + m.exceedingCeiling, 0);
 
   document.getElementById("fitTable").innerHTML = `
     <caption>
@@ -711,6 +864,384 @@ function drawTable() {
     </tfoot>`;
 }
 
+/* ---------- wind charts ----------
+   Same helpers, same palette slots, same interaction contract. What differs is what the
+   quantity means: a speed in m/s rather than a bounded fraction of a ceiling. */
+
+function drawWindDistribution(monthIndex) {
+  const svg = document.getElementById("windDistChart");
+  clear(svg);
+
+  const plot = { left: 58, right: 738, top: 18, bottom: 272 };
+  const speedMax = WIND.speedMax;
+  const binWidth = speedMax / BINS;
+
+  const values = [];
+  for (let i = 0; i < windMeasured.length; i++) {
+    if (monthIndex === null || windMeasured.month[i] === monthIndex) values.push(windMeasured.value[i]);
+  }
+
+  const counts = new Array(BINS).fill(0);
+  for (const value of values) counts[Math.min(BINS - 1, Math.floor(value / binWidth))]++;
+  const density = counts.map(c => c / (values.length * binWidth));
+
+  const fit = monthIndex === null ? null : WIND.months[monthIndex];
+  const curve = fit ? fit.density : null;
+  const pinned = fit ? fit.twoDensity : null;
+
+  const yMax = Math.max(
+    Math.max(...density),
+    curve ? Math.max(...curve) : 0,
+    pinned ? Math.max(...pinned) : 0
+  ) * 1.12;
+
+  const x = scale(0, speedMax, plot.left, plot.right);
+  const y = scale(0, yMax, plot.bottom, plot.top);
+
+  yAxis(svg, y, niceTicks(yMax), plot, { label: "Density", format: v => fmt(v, 2) });
+
+  for (let bin = 0; bin < BINS; bin++) {
+    if (density[bin] <= 0) continue;
+    const x0 = x(bin * binWidth), x1 = x((bin + 1) * binWidth);
+    const rect = el("path", {
+      d: roundedTopBar(x0 + 1, x1 - 1, y(density[bin]), plot.bottom, 4),
+      fill: "var(--measured)"
+    });
+    const lo = bin * binWidth, hi = lo + binWidth;
+    rect.addEventListener("pointerenter", e => showTip(e,
+      `Daily mean ${fmt(lo)}–${fmt(hi)} m/s`,
+      [["Days", counts[bin].toLocaleString()],
+       ["Share of period", (100 * counts[bin] / values.length).toFixed(1) + "%"]]));
+    rect.addEventListener("pointerleave", hideTip);
+    svg.appendChild(rect);
+  }
+
+  const drawCurve = (points, color, dashed) => {
+    let d = "";
+    for (let i = 0; i < points.length; i++) {
+      const px = x(speedMax * i / (points.length - 1));
+      const py = y(Math.min(points[i], yMax));
+      d += (i === 0 ? "M" : "L") + px.toFixed(1) + " " + py.toFixed(1);
+    }
+    const attrs = {
+      d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round"
+    };
+    // The rejected fit is dashed as well as differently coloured: it is not a peer of the
+    // fitted curve, and it should not read as one.
+    if (dashed) attrs["stroke-dasharray"] = "5 4";
+    svg.appendChild(el("path", attrs));
+  };
+
+  if (pinned) drawCurve(pinned, "var(--ceiling)", true);
+  if (curve) drawCurve(curve, "var(--modelled)", false);
+
+  if (fit) {
+    // Anchored top-RIGHT: both densities peak on the left of this axis and fall to nothing by
+    // the high-speed end, so that corner is the only reliably empty one.
+    const critical = fit.critical;
+    const labelX = plot.right - 4;
+    svg.appendChild(el("text", {
+      class: "direct-label", fill: "var(--modelled)", x: labelX, y: plot.top + 12, "text-anchor": "end"
+    }, `3-parameter: k ${fmt(fit.k)}, A ${fmt(fit.a)}, γ ${fmt(fit.gamma)}`));
+    svg.appendChild(el("text", {
+      class: "annot", x: labelX, y: plot.top + 26, "text-anchor": "end"
+    }, `KS ${fmt(fit.ks, 4)} vs critical ${fmt(critical, 4)} — ${fit.ks < critical ? "passes" : "fails"}`));
+
+    svg.appendChild(el("text", {
+      class: "direct-label", fill: "var(--ceiling)", x: labelX, y: plot.top + 46, "text-anchor": "end"
+    }, `2-parameter: k ${fmt(fit.twoK)} (γ pinned at 0)`));
+    svg.appendChild(el("text", {
+      class: "annot", x: labelX, y: plot.top + 60, "text-anchor": "end"
+    }, `KS ${fmt(fit.twoKs, 4)} — ${fit.twoKs < critical ? "passes" : "fails"}`));
+
+    // Where the site's daily means actually stop, and the whole argument for the third parameter.
+    svg.appendChild(el("line", { class: "threshold", x1: x(fit.gamma), x2: x(fit.gamma), y1: plot.top, y2: plot.bottom }));
+    svg.appendChild(el("text", { class: "annot", x: x(fit.gamma) + 5, y: plot.bottom - 8 }, `γ = ${fmt(fit.gamma)} m/s`));
+  }
+
+  const ticks = [];
+  for (let v = 0; v <= speedMax + 1e-9; v += 1) ticks.push([x(v), fmt(v, 0)]);
+  xAxis(svg, ticks, plot, { label: "Daily mean wind speed (m/s, at 15 m above ground)" });
+
+  svg.appendChild(el("text", { class: "annot", x: plot.left, y: plot.bottom + 52 },
+    `${values.length.toLocaleString()} days · ` +
+    (monthIndex === null ? "all months pooled — the fitted curves are drawn per month" : MONTH_NAMES[monthIndex])));
+}
+
+function drawWindSeason(selectedMonth) {
+  const svg = document.getElementById("windSeasonChart");
+  clear(svg);
+
+  const plot = { left: 58, right: 668, top: 20, bottom: 238 };
+  const measuredMeans = monthlyMeans(windMeasured);
+  const syntheticMeans = monthlyMeans(windSynthetic);
+
+  const all = measuredMeans.concat(syntheticMeans);
+  const yLow = Math.min(...all) - 0.25, yHigh = Math.max(...all) + 0.25;
+
+  const x = i => plot.left + (plot.right - plot.left) * i / 11;
+  const y = scale(yLow, yHigh, plot.bottom, plot.top);
+
+  const ticks = [];
+  for (let v = Math.ceil(yLow * 4) / 4; v <= yHigh; v += 0.25) ticks.push(Number(v.toFixed(2)));
+  yAxis(svg, y, ticks, plot, { label: "Mean daily speed (m/s)", format: v => fmt(v, 2) });
+  xAxis(svg, MONTH_NAMES.map((m, i) => [x(i), m]), plot);
+
+  for (const [means, color, name, dy] of [
+    [measuredMeans, "var(--measured)", "Measured", -9],
+    [syntheticMeans, "var(--modelled)", "Synthetic", 17]
+  ]) {
+    let d = "";
+    means.forEach((value, i) => { d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + " " + y(value).toFixed(1); });
+    svg.appendChild(el("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
+
+    means.forEach((value, i) => {
+      svg.appendChild(el("circle", {
+        cx: x(i), cy: y(value), r: i === selectedMonth ? 6 : 4,
+        fill: color, stroke: "var(--surface-1)", "stroke-width": 2
+      }));
+    });
+
+    svg.appendChild(el("text", {
+      class: "direct-label", fill: color, x: plot.right + 8, y: y(means[11]) + dy
+    }, name));
+  }
+
+  for (let i = 0; i < 12; i++) {
+    const band = el("rect", {
+      x: x(i) - (plot.right - plot.left) / 22, y: plot.top,
+      width: (plot.right - plot.left) / 11, height: plot.bottom - plot.top,
+      fill: "transparent"
+    });
+    band.addEventListener("pointermove", e => showTip(e, MONTH_NAMES[i], [
+      ["Measured", fmt(measuredMeans[i], 3) + " m/s"],
+      ["Synthetic", fmt(syntheticMeans[i], 3) + " m/s"],
+      ["Fitted k", fmt(WIND.months[i].k, 3)],
+      ["Fitted A", fmt(WIND.months[i].a, 3)],
+      ["Fitted γ", fmt(WIND.months[i].gamma, 3)],
+      ["Days measured", WIND.months[i].days.toLocaleString()]
+    ]));
+    band.addEventListener("pointerleave", hideTip);
+    svg.appendChild(band);
+  }
+}
+
+function drawWindYear(svgId, track, year, color, title) {
+  const svg = document.getElementById(svgId);
+  clear(svg);
+
+  const plot = { left: 54, right: 386, top: 46, bottom: 208 };
+  const rows = [];
+  for (let i = 0; i < track.length; i++) {
+    if (track.year[i] === year) rows.push([track.dayOfYear[i], track.value[i]]);
+  }
+  if (rows.length === 0) return;
+
+  const yMax = 10;
+  const x = scale(1, 366, plot.left, plot.right);
+  const y = scale(0, yMax, plot.bottom, plot.top);
+
+  yAxis(svg, y, [0, 2.5, 5, 7.5, 10], plot, { label: "m/s", format: v => fmt(v, 1) });
+
+  let bars = "";
+  for (const [doy, speed] of rows) bars += `M${x(doy).toFixed(1)} ${plot.bottom}V${y(speed).toFixed(1)}`;
+  svg.appendChild(el("path", { d: bars, stroke: color, "stroke-width": 1.1, opacity: .85 }));
+
+  svg.appendChild(el("text", { class: "panel-title", x: 8, y: 18 }, title));
+  const mean = rows.reduce((sum, r) => sum + r[1], 0) / rows.length;
+  svg.appendChild(el("text", { class: "annot", x: 8, y: 32 },
+    `${rows.length} days · mean ${fmt(mean, 2)} m/s`));
+
+  const monthStarts = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+  xAxis(svg, monthStarts.filter((_, i) => i % 3 === 0).map((doy, i) => [x(doy), ["Jan", "Apr", "Jul", "Oct"][i]]), plot);
+
+  const hit = el("rect", { x: plot.left, y: plot.top, width: plot.right - plot.left, height: plot.bottom - plot.top, fill: "transparent" });
+  hit.addEventListener("pointermove", event => {
+    const box = svg.getBoundingClientRect();
+    const vx = (event.clientX - box.left) / box.width * 400;
+    const doy = 1 + (vx - plot.left) / (plot.right - plot.left) * 365;
+
+    let best = null, bestGap = Infinity;
+    for (const row of rows) {
+      const gap = Math.abs(row[0] - doy);
+      if (gap < bestGap) { bestGap = gap; best = row; }
+    }
+    if (!best) return;
+    const date = new Date(Date.UTC(year, 0, best[0]));
+    showTip(event, date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }), [
+      ["Daily mean", fmt(best[1], 2) + " m/s"],
+      ["Implied mean v³", fmt(WIND.energyPatternFactor.model * best[1] ** 3, 1) + " m³/s³"]
+    ]);
+  });
+  hit.addEventListener("pointerleave", hideTip);
+  svg.appendChild(hit);
+}
+
+function drawWindLag(svgId, pairs, color, title, correlation) {
+  const svg = document.getElementById(svgId);
+  clear(svg);
+
+  const plot = { left: 54, right: 380, top: 48, bottom: 240 };
+  const speedMax = WIND.speedMax;
+  const x = scale(0, speedMax, plot.left, plot.right);
+  const y = scale(0, speedMax, plot.bottom, plot.top);
+
+  const ticks = [];
+  for (let v = 0; v <= speedMax + 1e-9; v += 2.5) ticks.push(v);
+  yAxis(svg, y, ticks, plot, { label: "Today (m/s)", format: v => fmt(v, 1) });
+  xAxis(svg, ticks.map(v => [x(v), fmt(v, 1)]), plot, { label: "Yesterday (m/s)" });
+
+  svg.appendChild(el("path", {
+    d: dotPath(pairs, x, y), stroke: color, "stroke-width": 3, "stroke-linecap": "round",
+    fill: "none", opacity: .3
+  }));
+
+  const meanX = pairs.reduce((s, p) => s + p[0], 0) / pairs.length;
+  const meanY = pairs.reduce((s, p) => s + p[1], 0) / pairs.length;
+  let sxy = 0, sxx = 0;
+  for (const [a, b] of pairs) { sxy += (a - meanX) * (b - meanY); sxx += (a - meanX) ** 2; }
+  const slope = sxy / sxx;
+  const lineAt = v => meanY + slope * (v - meanX);
+
+  svg.appendChild(el("line", {
+    x1: x(0), y1: y(lineAt(0)), x2: x(speedMax), y2: y(lineAt(speedMax)),
+    stroke: color, "stroke-width": 2.5, opacity: .95
+  }));
+
+  svg.appendChild(el("text", { class: "panel-title", x: 8, y: 18 }, title));
+  svg.appendChild(el("text", {
+    class: "direct-label", fill: color, x: plot.right, y: 18, "text-anchor": "end"
+  }, `lag-1 r = ${fmt(correlation, 3)}`));
+  svg.appendChild(el("text", { class: "annot", x: 8, y: 33 }, `${pairs.length.toLocaleString()} consecutive-day pairs`));
+
+  const hit = el("rect", { x: plot.left, y: plot.top, width: plot.right - plot.left, height: plot.bottom - plot.top, fill: "transparent" });
+  hit.addEventListener("pointermove", event => {
+    const box = svg.getBoundingClientRect();
+    const vx = (event.clientX - box.left) / box.width * 400;
+    const vy = (event.clientY - box.top) / box.height * 300;
+    let best = null, bestGap = Infinity;
+    for (const [a, b] of pairs) {
+      const gap = (x(a) - vx) ** 2 + (y(b) - vy) ** 2;
+      if (gap < bestGap) { bestGap = gap; best = [a, b]; }
+    }
+    if (!best || bestGap > 400) { hideTip(); return; }
+    showTip(event, "One consecutive-day pair", [
+      ["Yesterday", fmt(best[0], 2) + " m/s"],
+      ["Today", fmt(best[1], 2) + " m/s"],
+      ["Change", (best[1] - best[0] >= 0 ? "+" : "") + fmt(best[1] - best[0], 2)]
+    ]);
+  });
+  hit.addEventListener("pointerleave", hideTip);
+  svg.appendChild(hit);
+}
+
+function drawWindCube() {
+  const svg = document.getElementById("windCubeChart");
+  clear(svg);
+
+  const plot = { left: 58, right: 738, top: 22, bottom: 240 };
+  const factor = WIND.energyPatternFactor;
+  const bins = factor.counts.length;
+  const width = (factor.binMax - factor.binMin) / bins;
+
+  const yMax = Math.max(...factor.counts) * 1.15;
+  const x = scale(factor.binMin, factor.binMax, plot.left, plot.right);
+  const y = scale(0, yMax, plot.bottom, plot.top);
+
+  yAxis(svg, y, niceTicks(yMax), plot, { label: "Days", format: v => v.toLocaleString() });
+
+  for (let bin = 0; bin < bins; bin++) {
+    if (factor.counts[bin] <= 0) continue;
+    const x0 = x(factor.binMin + bin * width), x1 = x(factor.binMin + (bin + 1) * width);
+    const rect = el("path", {
+      d: roundedTopBar(x0 + 1, x1 - 1, y(factor.counts[bin]), plot.bottom, 4),
+      fill: "var(--measured)"
+    });
+    const lo = factor.binMin + bin * width;
+    rect.addEventListener("pointerenter", e => showTip(e,
+      `Factor ${fmt(lo)}–${fmt(lo + width)}`,
+      [["Days", factor.counts[bin].toLocaleString()],
+       ["Share", (100 * factor.counts[bin] / factor.days).toFixed(1) + "%"]]));
+    rect.addEventListener("pointerleave", hideTip);
+    svg.appendChild(rect);
+  }
+
+  // The model's single value, drawn on top of the spread it replaces.
+  svg.appendChild(el("line", {
+    x1: x(factor.model), x2: x(factor.model), y1: plot.top, y2: plot.bottom,
+    stroke: "var(--modelled)", "stroke-width": 2.5
+  }));
+  svg.appendChild(el("text", {
+    class: "direct-label", fill: "var(--modelled)", x: x(factor.model) + 6, y: plot.top + 12
+  }, `model: ${fmt(factor.model, 3)}, every day`));
+
+  svg.appendChild(el("text", { class: "annot", x: x(factor.model) + 6, y: plot.top + 26 },
+    `measured p10 ${fmt(factor.p10, 2)} · median ${fmt(factor.median, 2)} · p90 ${fmt(factor.p90, 2)}`));
+
+  const ticks = [];
+  for (let v = factor.binMin; v <= factor.binMax + 1e-9; v += 0.2) ticks.push([x(v), fmt(v, 1)]);
+  xAxis(svg, ticks, plot, { label: "Energy pattern factor,  mean(v³) ÷ mean(v)³" });
+
+  svg.appendChild(el("text", { class: "annot", x: plot.left, y: plot.bottom + 52 },
+    `${factor.days.toLocaleString()} days` +
+    (factor.aboveRange > 0 ? ` · ${factor.aboveRange} above ${fmt(factor.binMax, 1)}, off the right` : "")));
+}
+
+function drawWindTiles() {
+  const factor = WIND.energyPatternFactor;
+  const tiles = [
+    ["Days fitted", windMeasured.length.toLocaleString(), "", `${WIND.startDate} to ${WIND.endDate}`],
+    ["Mean daily speed", fmt(WIND.meanSpeed.observed, 2), " m/s",
+      `Synthetic: ${fmt(WIND.meanSpeed.synthetic, 2)} m/s, at ${WIND.anemometerHeight} m above ground`],
+    ["Persistence, lag-1 r", fmt(WIND.autocorrelation.synthetic, 2), "",
+      `${fmt(WIND.autocorrelation.observed, 2)} measured, ${fmt(WIND.autocorrelation.independent, 2)} without the AR(1) term (φ = ${fmt(WIND.autocorrelation.phi, 2)})`],
+    ["Energy pattern factor", fmt(factor.median, 2), "",
+      `Cubing the mean speed understates a day's energy by about this much`]
+  ];
+
+  document.getElementById("tiles").innerHTML = tiles.map(([label, value, unit, note]) => `
+    <div class="tile">
+      <div class="label">${label}</div>
+      <div class="value">${value}<span class="unit">${unit}</span></div>
+      <div class="note">${note}</div>
+    </div>`).join("");
+}
+
+function drawWindTable() {
+  const rows = WIND.months.map(m => `
+    <tr>
+      <td>${MONTH_NAMES[m.month - 1]}</td>
+      <td>${m.days.toLocaleString()}</td>
+      <td>${fmt(m.gamma, 3)}</td>
+      <td>${fmt(m.k, 3)}</td>
+      <td>${fmt(m.a, 3)}</td>
+      <td>${fmt(m.mean, 3)}</td>
+      <td>${fmt(m.sd, 3)}</td>
+      <td>${fmt(m.ks, 4)} / ${fmt(m.critical, 4)}</td>
+      <td>${fmt(m.twoKs, 4)}</td>
+    </tr>`).join("");
+
+  const totalDays = WIND.months.reduce((s, m) => s + m.days, 0);
+  const threePass = WIND.months.filter(m => m.ks < m.critical).length;
+  const twoPass = WIND.months.filter(m => m.twoKs < m.critical).length;
+
+  document.getElementById("windFitTable").innerHTML = `
+    <caption>
+      Twelve triples plus one persistence coefficient are the entire learned model. The last two
+      columns are why there are three parameters and not two.
+    </caption>
+    <thead>
+      <tr><th>Month</th><th>Days</th><th>γ</th><th>k</th><th>A</th><th>Mean</th><th>SD</th>
+      <th>KS / critical</th><th>KS, 2-param</th></tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr><td>All</td><td>${totalDays.toLocaleString()}</td><td>—</td><td>—</td><td>—</td>
+      <td>${fmt(WIND.meanSpeed.observed, 3)}</td><td>—</td>
+      <td>${threePass} of 12 pass</td><td>${twoPass} of 12 pass</td></tr>
+    </tfoot>`;
+}
+
 /* ---------- wiring ---------- */
 
 const monthSelect = document.getElementById("monthSelect");
@@ -719,21 +1250,106 @@ monthSelect.innerHTML = `<option value="all">All year (pooled)</option>` +
 monthSelect.value = "6";
 
 const yearSelect = document.getElementById("yearSelect");
-yearSelect.innerHTML = yearsAvailable.map(y => `<option value="${y}">${y}</option>`).join("");
-yearSelect.value = yearsAvailable[Math.floor(yearsAvailable.length / 2)];
+
+/* The two records are different files at different stations and do not cover the same years,
+   so the year list is rebuilt whenever the resource changes. */
+function populateYears(years) {
+  const previous = Number(yearSelect.value);
+  yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
+  yearSelect.value = years.includes(previous) ? previous : years[Math.floor(years.length / 2)];
+}
+
+const COPY = {
+  solar: {
+    title: "Stochastic weather model — the fitted clear-sky index",
+    sub: `Daily irradiance is never modelled directly. It is split into a deterministic ceiling
+      (solar geometry and atmosphere) and a bounded random fraction of it, the
+      <strong>clear-sky index</strong>. This page shows the distribution fitted to the measured
+      record, and what a synthetic record drawn from it does and does not reproduce.`,
+    yearLabel: "Year — scopes the daily-irradiation panels"
+  },
+  wind: {
+    title: "Stochastic weather model — the fitted wind-speed distribution",
+    sub: `Wind has <strong>no ceiling to divide out</strong>, so nothing can be normalised away:
+      the modelled quantity is the daily mean speed itself, and the whole seasonal cycle has to
+      live inside the twelve fitted distributions. Fitted at a different station from the solar
+      half — Essen-Bredeney, about 29 km from Bochum — because Bochum carries no wind record.`,
+    yearLabel: "Year — scopes the daily-speed panels"
+  }
+};
+
+let mode = "solar";
 
 function render() {
   const monthIndex = monthSelect.value === "all" ? null : Number(monthSelect.value);
   const year = Number(yearSelect.value);
 
-  drawDistribution(monthIndex);
-  drawSeason(monthIndex);
-  drawYear("yearMeasured", measured, year, "var(--measured)", `Measured ${year}`);
-  drawYear("yearSynthetic", synthetic, year, "var(--modelled)", `Synthetic ${year}`);
+  if (mode === "solar") {
+    drawTiles();
+    drawTable();
+    drawDistribution(monthIndex);
+    drawSeason(monthIndex);
+    drawYear("yearMeasured", measured, year, "var(--measured)", `Measured ${year}`);
+    drawYear("yearSynthetic", synthetic, year, "var(--modelled)", `Synthetic ${year}`);
+    drawLag("lagMeasured", lagPairs(measured), "var(--measured)", "Measured", SOLAR.autocorrelation.observed);
+    drawLag("lagSynthetic", lagPairs(synthetic), "var(--modelled)", "Synthetic", SOLAR.autocorrelation.synthetic);
+  } else {
+    drawWindTiles();
+    drawWindTable();
+    drawWindDistribution(monthIndex);
+    drawWindSeason(monthIndex);
+    drawWindYear("windYearMeasured", windMeasured, year, "var(--measured)", `Measured ${year}`);
+    drawWindYear("windYearSynthetic", windSynthetic, year, "var(--modelled)", `Synthetic ${year}`);
+    drawWindLag("windLagMeasured", lagPairs(windMeasured), "var(--measured)", "Measured", WIND.autocorrelation.observed);
+    drawWindLag("windLagSynthetic", lagPairs(windSynthetic), "var(--modelled)", "Synthetic", WIND.autocorrelation.synthetic);
+    drawWindCube();
+  }
+
+  document.getElementById("footnote").innerHTML = footnoteFor(mode);
+}
+
+function footnoteFor(which) {
+  const common = "Regenerate with: dotnet run --project samples/WeatherSynth.Sample -c Release -- viz";
+
+  if (which === "solar") {
+    return `${SOLAR.site} (${SOLAR.latitude}°N, ${SOLAR.longitude}°E). Clear-sky ceiling: ` +
+      `Ineichen-Perez with turbidity fitted to this station's own cloudless days. Synthetic ` +
+      `record generated over the same span as the measured one. ${common}`;
+  }
+
+  return `${WIND.site} (DWD ${WIND.stationId}), anemometer at ${WIND.anemometerHeight} m above ` +
+    `ground — not the 10 m almost everyone assumes. The synthetic record covers the same span as ` +
+    `the measured one, so its lag-1 differs slightly from the long-run figure windfit reports. ` +
+    `Speeds are daily means of hourly values; ` +
+    `a shape parameter fitted on daily means is not the one a published site figure quotes. ` +
+    `Generating at another height rests on a single roughness length (${WIND.roughness} m here, ` +
+    `an estimate) and a single profile law, which together carry far more error than anything ` +
+    `in these fitted shapes. ${common}`;
+}
+
+function setMode(next) {
+  if (next === "wind" && !WIND) return;
+  mode = next;
+
+  document.getElementById("modeSolar").setAttribute("aria-selected", String(mode === "solar"));
+  document.getElementById("modeWind").setAttribute("aria-selected", String(mode === "wind"));
+  document.getElementById("solarPanels").hidden = mode !== "solar";
+  document.getElementById("windPanels").hidden = mode !== "wind";
+
+  const copy = COPY[mode];
+  document.getElementById("pageTitle").textContent = copy.title;
+  document.getElementById("pageSub").innerHTML = copy.sub;
+  document.getElementById("yearLabel").textContent = copy.yearLabel;
+  document.title = copy.title;
+
+  populateYears(mode === "solar" ? yearsAvailable : windYearsAvailable);
+  render();
 }
 
 monthSelect.addEventListener("change", render);
 yearSelect.addEventListener("change", render);
+document.getElementById("modeSolar").addEventListener("click", () => setMode("solar"));
+document.getElementById("modeWind").addEventListener("click", () => setMode("wind"));
 
 document.getElementById("themeToggle").addEventListener("click", () => {
   const root = document.documentElement;
@@ -743,17 +1359,12 @@ document.getElementById("themeToggle").addEventListener("click", () => {
   render();
 });
 
-drawTiles();
-drawTable();
-drawLag("lagMeasured", lagPairs(measured), "var(--measured)", "Measured", DATA.autocorrelation.observed);
-drawLag("lagSynthetic", lagPairs(synthetic), "var(--modelled)", "Synthetic", DATA.autocorrelation.synthetic);
-render();
+// Without a wind record the switch has nothing to switch to, so it is removed rather than
+// left as a control that does nothing.
+if (!WIND) document.getElementById("modes").remove();
 
-document.getElementById("footnote").textContent =
-  `${DATA.site} (${DATA.latitude}°N, ${DATA.longitude}°E). Clear-sky ceiling: Ineichen-Perez with ` +
-  `turbidity fitted to this station's own cloudless days. Synthetic record generated over the same ` +
-  `span as the measured one, drawing independently from the fitted monthly distributions. ` +
-  `Regenerate with: dotnet run --project samples/WeatherSynth.Sample -c Release -- viz`;
+populateYears(yearsAvailable);
+setMode("solar");
 </script>
 </body>
 </html>

@@ -86,7 +86,10 @@ internal static class Program
                 break;
 
             case "viz":
-                return VisualizationExport.Run(days, station);
+                // The only command that wants both records at once. The wind half is optional:
+                // the page is written without it rather than failing, matching how the tests
+                // treat a missing station file.
+                return VisualizationExport.Run(days, station, TryReadWindDays(), DwdWindStations.EssenBredeney);
 
             case "impact":
                 ZenithImpact.Run(days, station);
@@ -106,6 +109,13 @@ internal static class Program
         }
 
         return 0;
+    }
+
+    /// <summary>The aggregated wind record, or null when the file is not present.</summary>
+    private static IReadOnlyList<DwdWindDay>? TryReadWindDays()
+    {
+        string? path = RepositoryData.TryLocateEssenWind();
+        return path is null ? null : DwdWindDayAggregator.ToDays(DwdWindReader.Read(path));
     }
 
     private static int RunWind(string command, string[] args)

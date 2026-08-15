@@ -8,12 +8,17 @@ using WeatherSynth.Data;
 namespace WeatherSynth.Sample;
 
 /// <summary>
-/// Writes the visualisation app: fits the model, generates a synthetic record over the same
-/// span as the measured one, and bakes both into a single self-contained HTML file.
+/// Writes the visualisation app: fits both models, generates a synthetic record over the same
+/// span as each measured one, and bakes everything into a single self-contained HTML file with a
+/// solar/wind switch.
 ///
 /// <para>The data is inlined rather than fetched. A page opened from the filesystem cannot
 /// <c>fetch</c> a sibling JSON file - the browser treats it as a cross-origin request - so a
 /// separate data file would only work behind a web server. One file always works.</para>
+///
+/// <para><b>The wind half is optional.</b> The two records are different files at different
+/// stations, and only the solar one is required to build. With the wind record absent the page is
+/// written without its switch, which is the same data-aware contract the tests follow.</para>
 /// </summary>
 public static class VisualizationExport
 {
@@ -21,7 +26,12 @@ public static class VisualizationExport
     private const string OutputFileName = "index.html";
     private const string DataPlaceholder = "/*__DATA__*/";
 
-    public static int Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
+    public static int Run(
+        IReadOnlyList<DwdSolarDay> days,
+        DwdStation station,
+        IReadOnlyList<DwdWindDay>? windDays = null,
+        DwdWindStation? windStation = null
+    )
     {
         string? templatePath = LocateTemplate();
         if (templatePath is null)
@@ -36,7 +46,7 @@ public static class VisualizationExport
         var model = ClearSkyIndexModel.Fit(series);
 
         Console.WriteLine(
-            $"Fitted {series.Count:N0} days. Generating a matching synthetic record ..."
+            $"Fitted {series.Count:N0} solar days. Generating a matching synthetic record ..."
         );
 
         var synthetic = new SyntheticSolarGenerator(model, IndexFitReport.Ceiling(station))
@@ -50,7 +60,23 @@ public static class VisualizationExport
             .IndexSeries(model, series[0].Date, series[^1].Date, persistence: 0.0)
             .ToList();
 
-        var payload = BuildPayload(series, synthetic, independent, model, station);
+        var payload = new JsonObject
+        {
+            ["solar"] = BuildPayload(series, synthetic, independent, model, station),
+        };
+
+        if (windDays is not null && windStation is not null)
+        {
+            Console.WriteLine("Fitting the wind record and generating its synthetic twin ...");
+            payload["wind"] = WindVisualizationPayload.Build(windDays, windStation);
+        }
+        else
+        {
+            Console.WriteLine(
+                $"No wind record found - writing the solar half only. "
+                    + $"Place data/{RepositoryData.EssenWindFileName} to include it."
+            );
+        }
 
         string template = File.ReadAllText(templatePath);
         if (!template.Contains(DataPlaceholder, StringComparison.Ordinal))

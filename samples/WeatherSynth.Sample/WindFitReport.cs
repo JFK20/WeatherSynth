@@ -13,8 +13,11 @@ namespace WeatherSynth.Sample;
 /// </summary>
 public static class WindFitReport
 {
-    /// <summary>The seed every synthetic run here uses, so before-and-after comparisons differ only in phi.</summary>
-    private const int Seed = 20260803;
+    /// <summary>
+    /// The seed every synthetic wind run uses, so before-and-after comparisons differ only in phi
+    /// - and so the visualisation page and this report describe the same generated record.
+    /// </summary>
+    internal const int Seed = 20260803;
 
     public static void Run(IReadOnlyList<DwdWindDay> days, DwdWindStation station)
     {
