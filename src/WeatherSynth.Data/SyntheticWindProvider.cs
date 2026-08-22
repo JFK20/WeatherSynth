@@ -36,10 +36,32 @@ public sealed class SyntheticWindProvider
     /// load-bearing even when generating elsewhere: it is the reference every transfer starts from.
     /// </param>
     public SyntheticWindProvider(WindSpeedModel model, WindSite fittedAt)
+        : this(model, fittedAt, IntradayShapeModel.Constant(NonNull(model).MeanEnergyPatternFactor))
+    { }
+
+    /// <summary>
+    /// Wraps an already-fitted model and an already-fitted intra-day shape.
+    /// </summary>
+    /// <param name="model">The fitted distributions - twelve Weibulls plus the persistence.</param>
+    /// <param name="fittedAt">Height and roughness the model was fitted at.</param>
+    /// <param name="intradayShape">
+    /// How each day's wind is spread across its own hours, which is what a power curve has to be
+    /// integrated over. Only <see cref="EstimateYield"/> consumes it; the speed generation above is
+    /// untouched by it.
+    /// </param>
+    public SyntheticWindProvider(
+        WindSpeedModel model,
+        WindSite fittedAt,
+        IntradayShapeModel intradayShape
+    )
     {
         Model = model ?? throw new ArgumentNullException(nameof(model));
         _fittedAt = fittedAt ?? throw new ArgumentNullException(nameof(fittedAt));
+        IntradayShape = intradayShape ?? throw new ArgumentNullException(nameof(intradayShape));
     }
+
+    private static WindSpeedModel NonNull(WindSpeedModel model) =>
+        model ?? throw new ArgumentNullException(nameof(model));
 
     /// <summary>
     /// Fits from a DWD station file on disk.
@@ -78,7 +100,11 @@ public sealed class SyntheticWindProvider
         var series = WindSpeedSeriesBuilder.Build(days);
         var model = WindSpeedModel.Fit(series, station.AnemometerHeightMeters);
 
-        return new SyntheticWindProvider(model, station.ToSite());
+        // Fitted from the series already in hand, so this costs one more pass over ~6,000 days
+        // rather than a second read of the record.
+        var intradayShape = IntradayShapeModel.Fit(series);
+
+        return new SyntheticWindProvider(model, station.ToSite(), intradayShape);
     }
 
     /// <summary>
@@ -86,6 +112,12 @@ public sealed class SyntheticWindProvider
     /// height the whole thing belongs to.
     /// </summary>
     public WindSpeedModel Model { get; }
+
+    /// <summary>
+    /// How each day's wind is spread within the day - the piece a power curve needs and a daily
+    /// mean speed cannot supply. See <see cref="IntradayShapeModel"/>.
+    /// </summary>
+    public IntradayShapeModel IntradayShape { get; }
 
     /// <summary>
     /// A synthetic year at the height the model was fitted at.
@@ -145,6 +177,40 @@ public sealed class SyntheticWindProvider
         WindSite? site = null,
         WindProfile? profile = null
     ) => CreateGenerator(site, profile).Generate(start, endInclusive, new Random(seed));
+
+    /// <summary>
+    /// What a turbine would produce over a synthetic year - the shape a caller asking "is this site
+    /// worth building on" actually wants.
+    ///
+    /// <para><b>Give it a hub height.</b> The default site is the 15 m anemometer, where the answer
+    /// is arithmetically correct and practically meaningless: no turbine stands at 15 m, and the
+    /// capacity factor comes out near 2%. The figure only means something at a height something
+    /// could be built at - and the moment it is transferred there, it carries the profile
+    /// uncertainty <see cref="WindProfile"/> warns about, <b>amplified</b>. The log law and the
+    /// power law differ by a factor 1.35 in speed over a 15 m to 100 m step and by <b>2.5x in
+    /// capacity factor</b>, because the working part of a power curve is cubic. Quote the profile
+    /// alongside the number, always.</para>
+    /// </summary>
+    /// <param name="year">Calendar year to generate.</param>
+    /// <param name="seed">Seed. The same year, seed and site reproduce the run exactly.</param>
+    /// <param name="curve">The turbine.</param>
+    /// <param name="site">Hub height and roughness; defaults to the fitting height. See above.</param>
+    /// <param name="profile">Profile law; defaults to <see cref="WindProfile.LogLaw"/>.</param>
+    public TurbineYield EstimateYield(
+        int year,
+        int seed,
+        TurbinePowerCurve curve,
+        WindSite? site = null,
+        WindProfile? profile = null
+    )
+    {
+        if (curve is null)
+            throw new ArgumentNullException(nameof(curve));
+
+        var days = CreateGenerator(site, profile).GenerateYear(year, new Random(seed));
+
+        return TurbineYield.Estimate(days, curve, IntradayShape);
+    }
 
     /// <summary>
     /// A generator of this provider's model, bound to a site.
