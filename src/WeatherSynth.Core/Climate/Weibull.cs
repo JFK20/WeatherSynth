@@ -128,7 +128,11 @@ namespace WeatherSynth.Climate
         public double Quantile(double p)
         {
             if (double.IsNaN(p) || p < 0.0 || p > 1.0)
-                throw new ArgumentOutOfRangeException(nameof(p), p, "Probability must be in [0, 1].");
+                throw new ArgumentOutOfRangeException(
+                    nameof(p),
+                    p,
+                    "Probability must be in [0, 1]."
+                );
 
             if (p <= 0.0)
                 return Location;
@@ -323,8 +327,7 @@ namespace WeatherSynth.Climate
 
                 // d/dk of the objective. Positive throughout, which is why the iteration is
                 // well behaved: the objective is monotone in k.
-                double derivative =
-                    sumPowerLogSquared / sumPower - ratio * ratio + 1.0 / (k * k);
+                double derivative = sumPowerLogSquared / sumPower - ratio * ratio + 1.0 / (k * k);
 
                 if (!(Math.Abs(derivative) > 0.0))
                     break;

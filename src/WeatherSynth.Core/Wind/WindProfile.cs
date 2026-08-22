@@ -99,8 +99,7 @@ namespace WeatherSynth.Wind
                 return Math.Pow(target.HeightMeters / reference.HeightMeters, _exponent);
             }
 
-            public override string ToString() =>
-                $"power law (alpha {_exponent:F3})";
+            public override string ToString() => $"power law (alpha {_exponent:F3})";
         }
     }
 }

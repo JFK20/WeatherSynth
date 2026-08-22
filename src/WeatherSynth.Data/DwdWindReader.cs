@@ -120,11 +120,7 @@ public static class DwdWindReader
     /// </summary>
     private static DateTimeOffset ParseTimestampUtc(string value)
     {
-        var local = DateTime.ParseExact(
-            value.Trim(),
-            "yyyyMMddHH",
-            CultureInfo.InvariantCulture
-        );
+        var local = DateTime.ParseExact(value.Trim(), "yyyyMMddHH", CultureInfo.InvariantCulture);
         return new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Utc));
     }
 }

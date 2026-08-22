@@ -9,7 +9,10 @@ public class SyntheticWindGeneratorTests
 {
     private static WindSpeedModel Model => WindFixtures.SeasonalModel;
 
-    private static readonly WindSite Anemometer = new(HeightMeters: 15.0, RoughnessLengthMeters: 0.3);
+    private static readonly WindSite Anemometer = new(
+        HeightMeters: 15.0,
+        RoughnessLengthMeters: 0.3
+    );
 
     [Fact]
     public void A_year_is_reproducible_from_its_seed()
@@ -37,7 +40,10 @@ public class SyntheticWindGeneratorTests
     {
         // 29 February is a real day with real wind; dropping it would put a one-day hole in the
         // persistence chain for no gain.
-        new SyntheticWindGenerator(Model).GenerateYear(2026, 1).Days.Should().HaveCount(365);
+        new SyntheticWindGenerator(Model)
+            .GenerateYear(2026, 1)
+            .Days.Should()
+            .HaveCount(365);
         new SyntheticWindGenerator(Model).GenerateYear(2024, 1).Days.Should().HaveCount(366);
     }
 
@@ -156,8 +162,11 @@ public class SyntheticWindGeneratorTests
         belowUnity.Should().Throw<ArgumentOutOfRangeException>();
 
         Action backwards = () =>
-            new SyntheticWindGenerator(Model)
-                .Generate(new DateOnly(2026, 3, 1), new DateOnly(2026, 1, 1), new Random(1));
+            new SyntheticWindGenerator(Model).Generate(
+                new DateOnly(2026, 3, 1),
+                new DateOnly(2026, 1, 1),
+                new Random(1)
+            );
         backwards.Should().Throw<ArgumentException>();
     }
 }

@@ -371,6 +371,5 @@ namespace WeatherSynth.Climate
                     return d * v;
             }
         }
-
     }
 }

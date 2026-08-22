@@ -81,7 +81,26 @@ namespace WeatherSynth.Climate
             if (random is null)
                 throw new ArgumentNullException(nameof(random));
 
-            double index = _chain.Next(date, random);
+            return DayFromIndex(date, _chain.Next(date, random));
+        }
+
+        /// <summary>
+        /// Builds the day for an index that has already been drawn, rather than drawing one.
+        ///
+        /// <para>The seam for <see cref="CoupledLatentAr1Chain"/>, which draws the index jointly
+        /// with a wind speed and so cannot go through <see cref="GenerateDay"/>. It exists so that
+        /// the ceiling integration keeps exactly one definition: a coupled generator that
+        /// multiplied by its own ceiling would be a second place for the 15-minute step and the
+        /// site's coordinates to disagree, which is the one error in this pipeline that leaves no
+        /// trace in the numbers.</para>
+        ///
+        /// <para>Stateless, and it does not advance the persistence chain - the caller owns the
+        /// ordering.</para>
+        /// </summary>
+        /// <param name="date">The day, which selects the ceiling.</param>
+        /// <param name="index">A clear-sky index drawn elsewhere.</param>
+        public SyntheticSolarDay DayFromIndex(DateOnly date, double index)
+        {
             double clearSky = _ceiling.ForDate(date.ToDateTime(TimeOnly.MinValue)).GhiWhPerM2;
 
             return new SyntheticSolarDay(date, index, clearSky, index * clearSky);

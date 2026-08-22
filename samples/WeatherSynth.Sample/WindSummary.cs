@@ -123,7 +123,9 @@ public static class WindSummary
         Console.WriteLine(
             "  Note this is the RAW lag-1: the chain's phi is fitted on normal scores and comes"
         );
-        Console.WriteLine("  out smaller, because the seasonal cycle is re-supplied by the marginals.");
+        Console.WriteLine(
+            "  out smaller, because the seasonal cycle is re-supplied by the marginals."
+        );
         Console.WriteLine();
 
         // The instrument changed from cup anemometer to 2D ultrasonic on 2021-07-20. It is a real
@@ -152,9 +154,7 @@ public static class WindSummary
             .Select(g => (Month: g.Key, Mean: g.Average(d => d.MeanSpeed)))
             .ToList();
 
-        var pick = highest
-            ? byMonth.MaxBy(m => m.Mean)
-            : byMonth.MinBy(m => m.Mean);
+        var pick = highest ? byMonth.MaxBy(m => m.Mean) : byMonth.MinBy(m => m.Mean);
 
         return $"month {pick.Month} ({pick.Mean:F2} m/s)";
     }

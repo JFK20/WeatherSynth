@@ -12,4 +12,11 @@
   <ItemGroup>
     <PackageReference Include="SolarCalculator" Version="3.6.1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The coupled chain's innovation-correlation correction is an implementation detail of the
+             chain, but it is the one piece of that class whose formula can be checked in isolation -
+             and a wrong one is invisible everywhere else. See CoupledLatentAr1ChainTests. -->
+    <InternalsVisibleTo Include="WeatherSynth.Core.Tests" />
+  </ItemGroup>
 </Project>

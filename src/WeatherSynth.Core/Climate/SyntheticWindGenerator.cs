@@ -142,7 +142,26 @@ namespace WeatherSynth.Climate
             if (random is null)
                 throw new ArgumentNullException(nameof(random));
 
-            double atReference = _chain.Next(date, random);
+            return DayFromReferenceSpeed(date, _chain.Next(date, random));
+        }
+
+        /// <summary>
+        /// Builds the day for a speed that has already been drawn, rather than drawing one.
+        ///
+        /// <para>The seam for <see cref="CoupledLatentAr1Chain"/>, which draws the speed jointly
+        /// with a clear-sky index and so cannot go through <see cref="GenerateDay"/>. It exists so
+        /// that the height transfer and the energy-pattern correction keep exactly one definition -
+        /// a coupled generator applying its own transfer would be a second place for it to be
+        /// applied twice, which is the first thing to suspect when a synthetic annual mean comes
+        /// out far from the record's.</para>
+        ///
+        /// <para>Stateless, and it does not advance the persistence chain - the caller owns the
+        /// ordering.</para>
+        /// </summary>
+        /// <param name="date">The day being built.</param>
+        /// <param name="atReference">A daily mean speed drawn elsewhere, at the fitting height.</param>
+        public SyntheticWindDay DayFromReferenceSpeed(DateOnly date, double atReference)
+        {
             double speed = atReference * _transferFactor;
 
             return new SyntheticWindDay(

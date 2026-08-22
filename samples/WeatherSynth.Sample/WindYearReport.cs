@@ -37,7 +37,9 @@ public static class WindYearReport
         Console.WriteLine(
             "is exactly 1.0 and none of the profile's uncertainty is in these numbers. This is one"
         );
-        Console.WriteLine("realisation, not a forecast: another seed is an equally plausible year.");
+        Console.WriteLine(
+            "realisation, not a forecast: another seed is an equally plausible year."
+        );
         Console.WriteLine();
         Console.WriteLine("date          speed m/s   implied mean v³");
 

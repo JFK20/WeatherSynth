@@ -64,9 +64,7 @@ public class WeibullTests
         var atShapeTwo = new Weibull(shape: 2.0, scale: 3.0, location: 1.0);
 
         atShapeTwo.Mean.Should().BeApproximately(1.0 + 3.0 * Math.Sqrt(Math.PI) / 2.0, 1e-12);
-        atShapeTwo
-            .Variance.Should()
-            .BeApproximately(9.0 * (1.0 - Math.PI / 4.0), 1e-12);
+        atShapeTwo.Variance.Should().BeApproximately(9.0 * (1.0 - Math.PI / 4.0), 1e-12);
 
         // k = 1 is the exponential: mean gamma + A, sd A.
         var exponential = new Weibull(shape: 1.0, scale: 2.5, location: 0.5);
@@ -106,10 +104,7 @@ public class WeibullTests
 
         foreach (double p in new[] { 0.01, 0.1, 0.5, 0.9, 0.99 })
         {
-            transferred
-                .Quantile(p)
-                .Should()
-                .BeApproximately(January.Quantile(p) * factor, 1e-9);
+            transferred.Quantile(p).Should().BeApproximately(January.Quantile(p) * factor, 1e-9);
         }
 
         transferred.Mean.Should().BeApproximately(January.Mean * factor, 1e-9);
@@ -191,10 +186,7 @@ public class WeibullTests
 
         Action atTheLocation = () =>
             Weibull.FitByMaximumLikelihood(new[] { 1.0, 2.0, 3.0 }, location: 1.0);
-        atTheLocation
-            .Should()
-            .Throw<ArgumentException>()
-            .WithMessage("*smallest observation*");
+        atTheLocation.Should().Throw<ArgumentException>().WithMessage("*smallest observation*");
 
         Action tooFew = () => Weibull.FitByMaximumLikelihood(new[] { 3.0 });
         tooFew.Should().Throw<ArgumentException>();

@@ -92,10 +92,7 @@ public class EssenWindRecordTests
         // normal scores and comes out smaller, because the marginals re-supply the season.
         var series = complete.Select(d => (d.Date, d.MeanSpeed));
 
-        SeriesStatistics
-            .Lag1Autocorrelation(series)
-            .Should()
-            .BeApproximately(0.5287, 0.0005);
+        SeriesStatistics.Lag1Autocorrelation(series).Should().BeApproximately(0.5287, 0.0005);
     }
 
     [Fact]
@@ -263,7 +260,8 @@ public class EssenWindRecordTests
         double fitted =
             Enumerable
                 .Range(1, 12)
-                .Sum(month => model.ForMonth(month).Mean * DateTime.DaysInMonth(2001, month)) / 365.0;
+                .Sum(month => model.ForMonth(month).Mean * DateTime.DaysInMonth(2001, month))
+            / 365.0;
 
         fitted.Should().BeApproximately(complete.Average(d => d.MeanSpeed), 0.01);
         model.ReferenceHeightMeters.Should().Be(15.0);

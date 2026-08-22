@@ -51,11 +51,7 @@ public class SyntheticWindYearTests
         // Jensen twice over: once inside each day, and again across days. A year whose speeds vary
         // carries more energy than its mean speed alone suggests, and this is the number that
         // says by how much.
-        var year = new SyntheticWindYear(
-            2026,
-            seed: 1,
-            new[] { Day(1, 1, 2.0), Day(1, 2, 6.0) }
-        );
+        var year = new SyntheticWindYear(2026, seed: 1, new[] { Day(1, 1, 2.0), Day(1, 2, 6.0) });
 
         year.MeanSpeed.Should().BeApproximately(4.0, 1e-12);
 

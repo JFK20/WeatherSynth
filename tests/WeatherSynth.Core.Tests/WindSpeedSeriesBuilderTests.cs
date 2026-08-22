@@ -36,7 +36,8 @@ public class WindSpeedSeriesBuilderTests
 
         var series = WindSpeedSeriesBuilder.Build(days);
 
-        series.Select(d => d.Date)
+        series
+            .Select(d => d.Date)
             .Should()
             .Equal(new DateOnly(2015, 3, 14), new DateOnly(2015, 3, 16));
     }

@@ -86,10 +86,33 @@ internal static class Program
                 break;
 
             case "viz":
-                // The only command that wants both records at once. The wind half is optional:
-                // the page is written without it rather than failing, matching how the tests
-                // treat a missing station file.
-                return VisualizationExport.Run(days, station, TryReadWindDays(), DwdWindStations.EssenBredeney);
+                // One of two commands wanting both records at once. Here the wind half is
+                // optional: the page is written without it rather than failing, matching how the
+                // tests treat a missing station file.
+                return VisualizationExport.Run(
+                    days,
+                    station,
+                    TryReadWindDays(),
+                    DwdWindStations.EssenBredeney
+                );
+
+            case "couple":
+            {
+                // The other. Unlike viz there is no solar-only fallback to degrade to - a coupling
+                // fitted from one record does not exist - so a missing wind file is an error here.
+                var windDays = TryReadWindDays();
+                if (windDays is null)
+                {
+                    Console.Error.WriteLine(
+                        $"'couple' needs both records; could not find data/{RepositoryData.EssenWindFileName} "
+                            + "in any parent directory."
+                    );
+                    return 1;
+                }
+
+                CouplingReport.Run(days, station, windDays, DwdWindStations.EssenBredeney);
+                break;
+            }
 
             case "impact":
                 ZenithImpact.Run(days, station);
@@ -102,8 +125,8 @@ internal static class Program
             default:
                 Console.Error.WriteLine(
                     $"Unknown command '{command}'. Try: summary, zenith, decompose, kt, "
-                        + "calibrate, fit, year, viz, impact, fitcoords, sanity, windsummary, "
-                        + "windfit, windyear"
+                        + "calibrate, fit, year, viz, couple, impact, fitcoords, sanity, "
+                        + "windsummary, windfit, windyear"
                 );
                 return 1;
         }

@@ -31,8 +31,7 @@ namespace WeatherSynth.Wind
     public sealed record WindSite(double HeightMeters, double RoughnessLengthMeters)
     {
         /// <summary>Height above ground, in metres. Always greater than the roughness length.</summary>
-        public double HeightMeters { get; init; } =
-            Validated(HeightMeters, RoughnessLengthMeters);
+        public double HeightMeters { get; init; } = Validated(HeightMeters, RoughnessLengthMeters);
 
         /// <summary>Aerodynamic roughness length of the terrain, in metres. Always positive.</summary>
         public double RoughnessLengthMeters { get; init; } =

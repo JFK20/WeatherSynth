@@ -92,7 +92,9 @@ public static class WindFitReport
 
     private static void DoesAWeibullFit(IReadOnlyList<DailyWindSpeed> series, WindSpeedModel model)
     {
-        Console.WriteLine("=== Does a Weibull actually fit, and does it need three parameters? ===");
+        Console.WriteLine(
+            "=== Does a Weibull actually fit, and does it need three parameters? ==="
+        );
 
         // Both fits, on the same days, scored the same way. This is the measurement the decision
         // to carry a location parameter rests on, so it is re-made on every run rather than
@@ -203,7 +205,9 @@ public static class WindFitReport
         );
 
         Console.WriteLine("  In the space the chain actually works in - normal scores:");
-        Console.WriteLine($"    measured:      {measuredLatent:F4}   (this is what phi was fitted from)");
+        Console.WriteLine(
+            $"    measured:      {measuredLatent:F4}   (this is what phi was fitted from)"
+        );
         Console.WriteLine($"    with AR(1):    {sampledLatent:F4}");
         Console.WriteLine();
         Console.WriteLine(
@@ -237,7 +241,9 @@ public static class WindFitReport
         Console.WriteLine(
             "  Wind is more persistent than cloud - the solar record's measured lag-1 is 0.437"
         );
-        Console.WriteLine("  against this 0.529 - so the gap the chain has to close is larger too.");
+        Console.WriteLine(
+            "  against this 0.529 - so the gap the chain has to close is larger too."
+        );
         Console.WriteLine();
         Console.WriteLine(
             "  Phi is smaller than the measured lag-1 rather than equal to it, and that is the"
@@ -294,7 +300,9 @@ public static class WindFitReport
 
     private static void SeasonalCycle(IReadOnlyList<DailyWindSpeed> series, WindSpeedModel model)
     {
-        Console.WriteLine("=== The seasonal cycle lives in the twelve fits, not in any ceiling ===");
+        Console.WriteLine(
+            "=== The seasonal cycle lives in the twelve fits, not in any ceiling ==="
+        );
 
         var means = Enumerable
             .Range(1, 12)
@@ -322,10 +330,11 @@ public static class WindFitReport
 
         // Weighted by calendar month rather than averaged over the twelve fits directly, since
         // the months are of different lengths and the record's usable days are not evenly spread.
-        double fittedAnnual =
-            means.Sum(m => m.Mean * DateTime.DaysInMonth(2001, m.Month)) / 365.0;
+        double fittedAnnual = means.Sum(m => m.Mean * DateTime.DaysInMonth(2001, m.Month)) / 365.0;
 
-        Console.WriteLine($"  Measured mean daily speed: {series.Average(d => d.MeanSpeed), 7:F4} m/s");
+        Console.WriteLine(
+            $"  Measured mean daily speed: {series.Average(d => d.MeanSpeed), 7:F4} m/s"
+        );
         Console.WriteLine($"  Fitted   mean daily speed: {fittedAnnual, 7:F4} m/s");
         Console.WriteLine();
         Console.WriteLine(

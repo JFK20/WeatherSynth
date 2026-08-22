@@ -54,7 +54,9 @@ public class WindSpeedModelTests
         // The seasonal swing survives the fit. If it did not, the model would have averaged the
         // year away - which for wind means losing the seasons outright, since nothing upstream
         // carries them.
-        (model.ForMonth(1).Mean / model.ForMonth(7).Mean).Should().BeGreaterThan(1.2);
+        (model.ForMonth(1).Mean / model.ForMonth(7).Mean)
+            .Should()
+            .BeGreaterThan(1.2);
     }
 
     [Fact]
@@ -68,7 +70,10 @@ public class WindSpeedModelTests
             var observed = group.Select(d => d.MeanSpeed).ToList();
 
             GoodnessOfFit
-                .KolmogorovSmirnovDistance(observed, model.ForMonth(group.Key).CumulativeProbability)
+                .KolmogorovSmirnovDistance(
+                    observed,
+                    model.ForMonth(group.Key).CumulativeProbability
+                )
                 .Should()
                 .BeLessThan(
                     GoodnessOfFit.CriticalValueFivePercent(observed.Count),
@@ -87,9 +92,10 @@ public class WindSpeedModelTests
             .Where(d => d.Date.Month != 3 || d.Date.Day <= 12)
             .ToList();
 
-        series.Count(d => d.Date.Month == 3).Should().BeLessThan(
-            WindSpeedModel.MinimumSamplesPerMonth
-        );
+        series
+            .Count(d => d.Date.Month == 3)
+            .Should()
+            .BeLessThan(WindSpeedModel.MinimumSamplesPerMonth);
 
         var model = WindSpeedModel.Fit(series);
 

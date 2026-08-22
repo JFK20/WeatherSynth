@@ -6,7 +6,10 @@ namespace WeatherSynth.Core.Tests;
 
 public class WindProfileTests
 {
-    private static readonly WindSite Anemometer = new(HeightMeters: 15.0, RoughnessLengthMeters: 0.3);
+    private static readonly WindSite Anemometer = new(
+        HeightMeters: 15.0,
+        RoughnessLengthMeters: 0.3
+    );
 
     [Fact]
     public void The_same_place_transfers_by_exactly_one()
@@ -70,7 +73,9 @@ public class WindProfileTests
         var high = new WindSite(HeightMeters: 50.0, RoughnessLengthMeters: 0.3);
         var low = new WindSite(HeightMeters: 20.0, RoughnessLengthMeters: 0.3);
 
-        high.TransferFactorFrom(Anemometer).Should().BeGreaterThan(low.TransferFactorFrom(Anemometer));
+        high.TransferFactorFrom(Anemometer)
+            .Should()
+            .BeGreaterThan(low.TransferFactorFrom(Anemometer));
         high.TransferFactorFrom(Anemometer).Should().BeGreaterThan(1.0);
     }
 

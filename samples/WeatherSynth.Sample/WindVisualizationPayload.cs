@@ -182,10 +182,7 @@ public static class WindVisualizationPayload
                         GoodnessOfFit.KolmogorovSmirnovDistance(values, fit.CumulativeProbability),
                         4
                     ),
-                    ["critical"] = Round(
-                        GoodnessOfFit.CriticalValueFivePercent(values.Count),
-                        4
-                    ),
+                    ["critical"] = Round(GoodnessOfFit.CriticalValueFivePercent(values.Count), 4),
                     ["twoK"] = Round(pinned.Shape, 4),
                     ["twoKs"] = Round(
                         GoodnessOfFit.KolmogorovSmirnovDistance(

@@ -162,7 +162,11 @@ public class LatentAr1ChainTests
                 (
                     date,
                     Gaussian.Quantile(
-                        Math.Clamp(model.CumulativeProbability(speed, date.Month), 1e-12, 1.0 - 1e-12)
+                        Math.Clamp(
+                            model.CumulativeProbability(speed, date.Month),
+                            1e-12,
+                            1.0 - 1e-12
+                        )
                     )
                 )
             );

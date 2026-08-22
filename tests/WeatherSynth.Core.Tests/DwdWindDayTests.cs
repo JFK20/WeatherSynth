@@ -53,9 +53,7 @@ public class DwdWindDayTests
     {
         // Jensen, and the reason a synthetic daily mean alone understates energy: E[v³] > (E[v])³
         // for anything that varies at all, in one direction only.
-        var varying = DayOf(
-            Constant(1.0, 12).Concat(Constant(5.0, 12)).ToArray()
-        );
+        var varying = DayOf(Constant(1.0, 12).Concat(Constant(5.0, 12)).ToArray());
 
         varying.MeanSpeed.Should().BeApproximately(3.0, 1e-12);
         varying.MeanCubedSpeed.Should().BeApproximately(63.0, 1e-12);
