@@ -30,7 +30,7 @@ var köln = new SolarSite(51.02095, 6.89422, altitudeMeters: 50.0);
 var elsewhere = provider.GenerateYear(2026, seed: 42, köln);
 ```
 
-Fitting is the expensive step  it reads the whole record so keep the provider around and call
+Fitting is the expensive step it reads the whole record so keep the provider around and call
 `GenerateYear` per request. The provider is immutable and thread-safe; the generators it hands
 out are not. `provider.Generate(start, end, seed)` covers spans that are not calendar years.
 
@@ -53,7 +53,7 @@ The repo has 3 folders:
    - `zenith`: solar position vs. the DWD ZENIT column (151k reference angles)
    - `decompose`: splits the zenith residual into declination vs. hour-angle error
    - `impact`: what the zenith residual costs on daily clear-sky GHI
-   - `fitcoords`: recovers station coordinates from ZENIT by residual minimization
+   - `fitcoords`: recovers station coordinates from ZENIT by residual minimisation
    - `sanity`: the original clear-sky harness (equinox/solstice totals)
    - `windsummary`: wind coverage, gaps, monthly mean speeds, the cube-law correction
    - `windfit`: fits the twelve monthly Weibull distributions and scores them (KS, persistence)
@@ -77,19 +77,23 @@ var lifted = wind.GenerateYear(2026, seed: 42, hub);
 ```
 
 **Two warnings about wind output.** Wind power goes as the cube of speed, so a daily mean speed
-is *not* enough for an energy estimate — it is low by about 25% at this station. Use
-`MeanCubedSpeed`, which is carried for exactly that reason. And the height transfer is by far the
-largest source of error in the whole library: the log law and the power law disagree by 26% over a
+is *not* enough for an energy estimate it is low by about 25% at this station. Use
+`MeanCubedSpeed`, which is carried for exactly that reason. And the height transfer is a big
+source of error: the log law and the power law disagree by 26% over a
 15 m → 100 m extrapolation. Generating at the station's own 15 m applies no transfer at all.
 
-For an actual turbine, `MeanCubedSpeed` is still not enough that why there is an fake PowerCurve in `WindPowerCalculator` that takes the mean cubed speed and returns a daily energy
-It takes 3 as the cut in speed, 12.5 as the rated speed, and 25 as the cut out speed. With 2MW rated power, it returns the daily energy in kWh. It is a very rough estimate, but it is better than nothing.
-Keep tin mind the Values are just example Values fit for your own needs.
+For an actual turbine, `MeanCubedSpeed` is still not enough that's why there is a fake power
+curve in `TurbinePowerCurve`, which `TurbineYield` integrates over each day to return a daily
+energy. It takes 3 as the cut-in speed, 12.5 as the rated speed, and 25 as the cut-out speed. With
+2 MW rated power, it returns the daily energy in kWh. It is a very rough estimate, but it is better
+than nothing. Keep in mind that the values are just examples fit them to your own needs.
 
 ## Coupling the two
 
-Normaly a day cant be both sunny and windy, so the two resources are not independent. The `CoupledWeatherProvider` takes this into account and generates days that take this into account.
-It needs both Records to create such a year to calculate Correlation and such. Makes it a bit more realistic. It is an opt in Feature.
+Normally a day can't be both sunny and windy, so the two resources are not independent. The
+`CoupledWeatherProvider` takes this into account and generates days that pair up the way real ones
+do. It needs both records, because it has to measure the correlation between them. That makes it a
+bit more realistic. It is an opt-in feature.
 
 ```csharp
 var both = CoupledWeatherProvider.FromDwdRecords(
