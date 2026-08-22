@@ -47,7 +47,9 @@ The repo has 3 folders:
    - `calibrate`: fits Linke turbidity against measured cloudless days
    - `fit`: fits the monthly Beta distributions and scores them (KS, persistence)
    - `year`: prints one synthetic year at daily resolution `year [year] [seed]`
-   - `viz`: writes `viz/index.html`, a self-contained page with a solar/wind switch
+   - `viz`: writes `viz/index.html`, a self-contained page with a solar/wind/combined switch.
+     `viz <years> [seed] [coupled|independent]` projects future years instead of the record's span
+   - `couple`: fits the solar-wind coupling and scores it (needs both records)
    - `zenith`: solar position vs. the DWD ZENIT column (151k reference angles)
    - `decompose`: splits the zenith residual into declination vs. hour-angle error
    - `impact`: what the zenith residual costs on daily clear-sky GHI
@@ -56,6 +58,7 @@ The repo has 3 folders:
    - `windsummary`: wind coverage, gaps, monthly mean speeds, the cube-law correction
    - `windfit`: fits the twelve monthly Weibull distributions and scores them (KS, persistence)
    - `windyear`: prints one synthetic wind year at daily resolution `windyear [year] [seed]`
+   - `windpower`: turbine yield, checked against the record's own hourly energy
 
 It is built for .NET 9.0.
 
@@ -69,7 +72,7 @@ SyntheticWindYear year = wind.GenerateYear(2026, seed: 42);
 Console.WriteLine($"{year.MeanSpeed:F2} m/s mean, windiest day {year.MaxSpeed:F2} m/s");
 
 // Somewhere higher up. Read the warning below before trusting the result.
-var hub = new WindSite(heightMeters: 100.0, roughnessLengthMeters: 0.1);
+var hub = new WindSite(HeightMeters: 100.0, RoughnessLengthMeters: 0.1);
 var lifted = wind.GenerateYear(2026, seed: 42, hub);
 ```
 
@@ -78,6 +81,24 @@ is *not* enough for an energy estimate — it is low by about 25% at this statio
 `MeanCubedSpeed`, which is carried for exactly that reason. And the height transfer is by far the
 largest source of error in the whole library: the log law and the power law disagree by 26% over a
 15 m → 100 m extrapolation. Generating at the station's own 15 m applies no transfer at all.
+
+For an actual turbine, `MeanCubedSpeed` is still not enough that why there is an fake PowerCurve in `WindPowerCalculator` that takes the mean cubed speed and returns a daily energy
+It takes 3 as the cut in speed, 12.5 as the rated speed, and 25 as the cut out speed. With 2MW rated power, it returns the daily energy in kWh. It is a very rough estimate, but it is better than nothing.
+Keep tin mind the Values are just example Values fit for your own needs.
+
+## Coupling the two
+
+Normaly a day cant be both sunny and windy, so the two resources are not independent. The `CoupledWeatherProvider` takes this into account and generates days that take this into account.
+It needs both Records to create such a year to calculate Correlation and such. Makes it a bit more realistic. It is an opt in Feature.
+
+```csharp
+var both = CoupledWeatherProvider.FromDwdRecords(
+    "data/dwd_bochum_solar.csv", DwdStations.Bochum,
+    "data/dwd_essen_wind.csv", DwdWindStations.EssenBredeney);
+
+CoupledWeatherYear year = both.GenerateYear(2026, seed: 42);
+Console.WriteLine($"{year.Solar.GhiKWhPerM2:F0} kWh/m², {year.Wind.MeanSpeed:F2} m/s");
+```
 
 ## Two stations
 
