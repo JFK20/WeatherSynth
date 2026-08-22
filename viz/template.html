@@ -164,6 +164,13 @@
   tbody tr:hover { background: var(--surface-0); }
   tfoot td { font-weight: 600; border-bottom: none; }
 
+  .banner {
+    margin: 1rem 0 0; padding: .7rem .9rem; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    font-size: .85rem; color: var(--text-secondary); line-height: 1.5;
+  }
+  .banner strong { color: var(--text-primary); }
+
   .footnote { font-size: .82rem; color: var(--text-muted); margin-top: 1.5rem; }
   .footnote code { color: var(--text-secondary); }
 </style>
@@ -183,7 +190,9 @@
     <div class="modes" id="modes" role="tablist" aria-label="Resource">
       <button type="button" role="tab" id="modeSolar" aria-selected="true" aria-controls="solarPanels">Solar</button>
       <button type="button" role="tab" id="modeWind" aria-selected="false" aria-controls="windPanels">Wind</button>
+      <button type="button" role="tab" id="modeCombined" aria-selected="false" aria-controls="combinedPanels">Combined</button>
     </div>
+    <p class="banner" id="banner" hidden></p>
   </header>
 
   <div class="tiles" id="tiles"></div>
@@ -194,8 +203,12 @@
       <select id="monthSelect"></select>
     </div>
     <div class="field">
-      <label for="yearSelect" id="yearLabel">Year — scopes the daily-irradiation panels</label>
+      <label for="yearSelect" id="yearLabel">Modelled year — scopes the modelled daily panels</label>
       <select id="yearSelect"></select>
+    </div>
+    <div class="field" id="measuredYearField">
+      <label for="measuredYearSelect">Measured year — scopes the measured daily panels</label>
+      <select id="measuredYearSelect"></select>
     </div>
   </div>
 
@@ -370,6 +383,30 @@
 
   </div><!-- /windPanels -->
 
+  <div id="combinedPanels" hidden>
+
+  <section class="card">
+    <h2>Both resources, one year</h2>
+    <p>
+      The two modelled resources on a single time axis — daily irradiation on the left, daily mean
+      wind speed on the right. Drawn together because this is the only question the two halves
+      cannot answer separately: <strong>do they fail at the same time?</strong> Sizing a hybrid PV
+      and wind system is exactly the question of whether one fills in for the other.
+    </p>
+    <div class="plot"><svg id="combinedYear" viewBox="0 0 760 320" role="img" aria-label="Modelled daily irradiation and daily mean wind speed across one year, on a shared time axis"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>Do the two move together?</h2>
+    <p id="combinedScatterNote"></p>
+    <div class="smalls">
+      <div class="plot"><svg id="combinedLagMeasured" viewBox="0 0 400 300" role="img" aria-label="Measured clear-sky index against measured daily mean wind speed"></svg></div>
+      <div class="plot"><svg id="combinedLagSynthetic" viewBox="0 0 400 300" role="img" aria-label="Modelled clear-sky index against modelled daily mean wind speed"></svg></div>
+    </div>
+  </section>
+
+  </div>
+
   <p class="footnote" id="footnote"></p>
 </div>
 
@@ -379,6 +416,8 @@
 const DATA = /*__DATA__*/;
 const SOLAR = DATA.solar;
 const WIND = DATA.wind || null;
+const PROJECTION = DATA.projection || null;
+const COMBINED = DATA.combined || null;
 
 /* ---------- small helpers ---------- */
 
@@ -419,16 +458,19 @@ function dotPath(points, x, y) {
 
 /* ---------- data preparation ---------- */
 
-const START_MS = Date.parse(SOLAR.startDate + "T00:00:00Z");
-const dateOf = offset => new Date(START_MS + offset * DAY_MS);
+/* Each track carries its own origin. In twin mode the measured and synthetic tracks share one;
+   in projection mode the synthetic one starts years after the record ends, and reading both off a
+   single origin would date every projected day wrongly. */
+const startMsOf = track => Date.parse((track.start || SOLAR.startDate) + "T00:00:00Z");
 
 function decorate(track) {
   const n = track.offset.length;
   const month = new Int8Array(n), year = new Int16Array(n), dayOfYear = new Int16Array(n);
   const ghi = new Float32Array(n);
+  const startMs = startMsOf(track);
 
   for (let i = 0; i < n; i++) {
-    const date = dateOf(track.offset[i]);
+    const date = new Date(startMs + track.offset[i] * DAY_MS);
     month[i] = date.getUTCMonth();
     year[i] = date.getUTCFullYear();
     dayOfYear[i] = Math.round((date - Date.UTC(year[i], 0, 1)) / DAY_MS) + 1;
@@ -443,7 +485,7 @@ function decorate(track) {
 function decorateWind(track) {
   const n = track.offset.length;
   const month = new Int8Array(n), year = new Int16Array(n), dayOfYear = new Int16Array(n);
-  const startMs = Date.parse(WIND.startDate + "T00:00:00Z");
+  const startMs = Date.parse((track.start || WIND.startDate) + "T00:00:00Z");
 
   for (let i = 0; i < n; i++) {
     const date = new Date(startMs + track.offset[i] * DAY_MS);
@@ -486,6 +528,8 @@ function fullYears(track) {
 
 const yearsAvailable = fullYears(measured);
 const windYearsAvailable = windMeasured ? fullYears(windMeasured) : [];
+const syntheticYears = fullYears(synthetic);
+const windSyntheticYears = windSynthetic ? fullYears(windSynthetic) : [];
 
 /* ---------- tooltip ---------- */
 
@@ -808,6 +852,203 @@ function drawLag(svgId, pairs, color, title, correlation) {
 }
 
 /* ---------- tiles, table, footnote ---------- */
+
+/* ---------- combined: both resources at once ---------- */
+
+/* Joins the two modelled tracks on their actual dates. They are separate runs over separate
+   calendar spans in twin mode - the two records end months apart - so an index-wise join would
+   silently pair a solar day with a wind day from a different week. */
+function joinByDate(solarTrack, windTrack) {
+  const byDay = new Map();
+  const solarStart = startMsOf(solarTrack), windStart = startMsOf(windTrack);
+
+  for (let i = 0; i < solarTrack.length; i++) {
+    byDay.set(Math.round((solarStart + solarTrack.offset[i] * DAY_MS) / DAY_MS),
+      { index: solarTrack.index[i], ghi: solarTrack.ghi[i], year: solarTrack.year[i],
+        doy: solarTrack.dayOfYear[i], month: solarTrack.month[i] });
+  }
+
+  const joined = [];
+  for (let i = 0; i < windTrack.length; i++) {
+    const key = Math.round((windStart + windTrack.offset[i] * DAY_MS) / DAY_MS);
+    const solarDay = byDay.get(key);
+    if (solarDay) joined.push({ ...solarDay, speed: windTrack.speed[i] });
+  }
+  return joined;
+}
+
+function pearson(points) {
+  const n = points.length;
+  if (n < 2) return NaN;
+  let mx = 0, my = 0;
+  for (const [a, b] of points) { mx += a; my += b; }
+  mx /= n; my /= n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (const [a, b] of points) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; syy += (b - my) ** 2; }
+  const denom = Math.sqrt(sxx * syy);
+  return denom > 0 ? sxy / denom : NaN;
+}
+
+/* Mean of the twelve per-month correlations.
+
+   Pooling all twelve into one number is a trap this project has already walked into once: winter
+   days are windy AND dull, summer days calm AND bright, so the shared seasonal cycle correlates
+   the two resources on its own - about -0.13 here - even when they are drawn completely
+   independently. The pooled figure is therefore roughly twice the day-to-day co-movement it looks
+   like it measures. Within a month the season is gone and what is left is the real dependence.
+   knowledge.md §15 has the same finding on the fitted side. */
+function withinMonthCorrelation(rows) {
+  const out = [];
+  for (let m = 0; m < 12; m++) {
+    const inMonth = rows.filter(d => d.month === m);
+    if (inMonth.length > 2) out.push(pearson(inMonth.map(d => [d.index, d.speed])));
+  }
+  const good = out.filter(Number.isFinite);
+  return good.length ? good.reduce((a, b) => a + b, 0) / good.length : NaN;
+}
+
+const combinedJoined = (WIND && windSynthetic) ? joinByDate(synthetic, windSynthetic) : [];
+
+/* Both resources on one time axis, twin y-axes. */
+function drawCombinedYear(year) {
+  const svg = document.getElementById("combinedYear");
+  clear(svg);
+
+  const rows = combinedJoined.filter(d => d.year === year).sort((a, b) => a.doy - b.doy);
+  const plot = { left: 56, right: 700, top: 52, bottom: 260 };
+
+  if (!rows.length) {
+    svg.appendChild(el("text", { class: "annot", x: 8, y: 30 }, `No modelled data for ${year}.`));
+    return;
+  }
+
+  const ghiMax = Math.max(...rows.map(d => d.ghi)) * 1.05;
+  const speedMax = Math.max(...rows.map(d => d.speed)) * 1.05;
+
+  const x = scale(1, 366, plot.left, plot.right);
+  const yGhi = scale(0, ghiMax, plot.bottom, plot.top);
+  const ySpeed = scale(0, speedMax, plot.bottom, plot.top);
+
+  yAxis(svg, yGhi, niceTicks(ghiMax, 4), plot, { label: "kWh/m² per day", format: v => fmt(v, 1) });
+
+  // Right-hand axis, drawn here rather than through yAxis(): that helper owns the left gutter.
+  for (const tick of niceTicks(speedMax, 4)) {
+    svg.appendChild(el("text", {
+      class: "tick", x: plot.right + 8, y: ySpeed(tick) + 4, "text-anchor": "start"
+    }, fmt(tick, 1)));
+  }
+  svg.appendChild(el("text", {
+    class: "axis-title", x: plot.right + 46, y: (plot.top + plot.bottom) / 2,
+    "text-anchor": "middle", transform: `rotate(90 ${plot.right + 46} ${(plot.top + plot.bottom) / 2})`
+  }, "m/s"));
+
+  const monthStarts = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+  xAxis(svg, monthStarts.filter((_, i) => i % 3 === 0).map((doy, i) => [x(doy), ["Jan", "Apr", "Jul", "Oct"][i]]), plot);
+
+  const line = (accessor, y, color) => {
+    let d = "";
+    rows.forEach((row, i) => { d += `${i ? "L" : "M"}${x(row.doy).toFixed(1)} ${y(accessor(row)).toFixed(1)}`; });
+    svg.appendChild(el("path", { d, stroke: color, "stroke-width": 1.3, fill: "none", opacity: .85 }));
+  };
+
+  line(d => d.ghi, yGhi, "var(--modelled)");
+  line(d => d.speed, ySpeed, "var(--ceiling)");
+
+  svg.appendChild(el("text", { class: "panel-title", x: 8, y: 18 }, `Modelled ${year} — both resources`));
+  svg.appendChild(el("text", { class: "annot", x: 8, y: 33 },
+    `${rows.length} days · r = ${fmt(pearson(rows.map(d => [d.index, d.speed])), 3)} between index and speed`));
+
+  svg.appendChild(el("text", { class: "direct-label", fill: "var(--modelled)", x: plot.right, y: 18, "text-anchor": "end" }, "daily GHI"));
+  svg.appendChild(el("text", { class: "direct-label", fill: "var(--ceiling)", x: plot.right, y: 33, "text-anchor": "end" }, "wind speed"));
+}
+
+/* Clear-sky index against daily mean wind speed. The panel the coupling switch is visible in. */
+function drawCombinedScatter(svgId, points, color, title) {
+  const svg = document.getElementById(svgId);
+  clear(svg);
+
+  const plot = { left: 54, right: 380, top: 48, bottom: 240 };
+  const support = SOLAR.support;
+  const speedMax = WIND.speedMax;
+  const x = scale(0, support, plot.left, plot.right);
+  const y = scale(0, speedMax, plot.bottom, plot.top);
+
+  yAxis(svg, y, niceTicks(speedMax, 5), plot, { label: "Wind speed m/s", format: v => fmt(v, 0) });
+  xAxis(svg, [0, 0.25, 0.5, 0.75, 1.0, 1.25].map(v => [x(v), fmt(v, 2)]), plot, { label: "Clear-sky index" });
+
+  svg.appendChild(el("path", {
+    d: dotPath(points, x, y), stroke: color, "stroke-width": 3, "stroke-linecap": "round",
+    fill: "none", opacity: .28
+  }));
+
+  // Least-squares line, so the correlation quoted on the right is something the eye can check.
+  const n = points.length;
+  const mx = points.reduce((s, p) => s + p[0], 0) / n;
+  const my = points.reduce((s, p) => s + p[1], 0) / n;
+  let sxy = 0, sxx = 0;
+  for (const [a, b] of points) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; }
+  const slope = sxy / sxx;
+  const lineAt = v => my + slope * (v - mx);
+
+  svg.appendChild(el("line", {
+    x1: x(0), y1: y(lineAt(0)), x2: x(support), y2: y(lineAt(support)),
+    stroke: color, "stroke-width": 2.5, opacity: .95
+  }));
+
+  svg.appendChild(el("text", { class: "panel-title", x: 8, y: 18 }, title));
+  svg.appendChild(el("text", {
+    class: "direct-label", fill: color, x: plot.right, y: 18, "text-anchor": "end"
+  }, `r = ${fmt(pearson(points), 3)}`));
+  svg.appendChild(el("text", { class: "annot", x: 8, y: 33 }, `${n.toLocaleString()} paired days`));
+}
+
+function drawCombined(year) {
+  drawCombinedYear(year);
+
+  const measuredPoints = COMBINED ? COMBINED.points : [];
+  const syntheticPoints = combinedJoined.map(d => [d.index, d.speed]);
+
+  drawCombinedScatter("combinedLagMeasured", measuredPoints, "var(--measured)", "Measured");
+  drawCombinedScatter("combinedLagSynthetic", syntheticPoints, "var(--modelled)", "Modelled");
+
+  const coupled = COMBINED && COMBINED.coupled;
+  const pooled = pearson(syntheticPoints);
+  const within = withinMonthCorrelation(combinedJoined);
+  const measuredPooled = COMBINED ? COMBINED.correlation : NaN;
+  const measuredWithin = COMBINED ? COMBINED.withinMonth : NaN;
+
+  const table = `
+    <table style="margin-top:.9rem">
+      <thead><tr><th>correlation of index against speed</th><th>pooled</th><th>within month</th></tr></thead>
+      <tbody>
+        <tr><td>measured</td><td>${fmt(measuredPooled, 3)}</td><td>${fmt(measuredWithin, 3)}</td></tr>
+        <tr><td>modelled — ${coupled ? "coupled" : "independent"}</td><td>${fmt(pooled, 3)}</td><td>${fmt(within, 3)}</td></tr>
+      </tbody>
+    </table>`;
+
+  const shared = `
+    <strong>Read the right-hand column, not the left.</strong> Pooling twelve months puts
+    windy-and-dull winter days in the same scatter as calm-and-bright summer ones, so the shared
+    seasonal cycle tilts the pooled figure on its own — to about −0.13 here — <em>even when the two
+    resources are drawn completely independently</em>. Roughly half the pooled number is season, not
+    co-movement. Within a month the season is gone and what is left is the real dependence.`;
+
+  const specific = coupled
+    ? `Drawn from <strong>one bivariate chain</strong>, so the two resources carry the measured
+       dependence: windy days come out cloudy. The modelled figure lands near the measured one
+       rather than on it — a Gaussian copula reproduces rank dependence exactly, while the Pearson
+       figure after the quantile transform depends on both fitted shapes.`
+    : `Drawn <strong>independently</strong>, so within a month there is nothing there: each resource
+       is individually right and the pair carries no day-to-day dependence at all. Re-run with
+       <code>viz &lt;years&gt; &lt;seed&gt; coupled</code> to draw them together.`;
+
+  const caveat = `
+    Both records attenuate the measured figure: the solar record's days are true-solar-time days and
+    the wind record's are UTC days, and the two stations are about 29 km apart. It is a lower bound
+    on the real coupling, and is not corrected for.`;
+
+  document.getElementById("combinedScatterNote").innerHTML = specific + shared + caveat + table;
+}
 
 function drawTiles() {
   const tiles = [
@@ -1250,13 +1491,15 @@ monthSelect.innerHTML = `<option value="all">All year (pooled)</option>` +
 monthSelect.value = "6";
 
 const yearSelect = document.getElementById("yearSelect");
+const measuredYearSelect = document.getElementById("measuredYearSelect");
 
-/* The two records are different files at different stations and do not cover the same years,
-   so the year list is rebuilt whenever the resource changes. */
-function populateYears(years) {
-  const previous = Number(yearSelect.value);
-  yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
-  yearSelect.value = years.includes(previous) ? previous : years[Math.floor(years.length / 2)];
+/* The two records are different files at different stations and do not cover the same years, and
+   in projection mode the modelled years are years the record never saw at all - so measured and
+   modelled get a control each, and both lists are rebuilt whenever the resource changes. */
+function populateYears(select, years) {
+  const previous = Number(select.value);
+  select.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
+  select.value = years.includes(previous) ? previous : years[Math.floor(years.length / 2)];
 }
 
 const COPY = {
@@ -1266,7 +1509,7 @@ const COPY = {
       (solar geometry and atmosphere) and a bounded random fraction of it, the
       <strong>clear-sky index</strong>. This page shows the distribution fitted to the measured
       record, and what a synthetic record drawn from it does and does not reproduce.`,
-    yearLabel: "Year — scopes the daily-irradiation panels"
+    yearLabel: "Modelled year — scopes the modelled daily-irradiation panels"
   },
   wind: {
     title: "Stochastic weather model — the fitted wind-speed distribution",
@@ -1274,7 +1517,15 @@ const COPY = {
       the modelled quantity is the daily mean speed itself, and the whole seasonal cycle has to
       live inside the twelve fitted distributions. Fitted at a different station from the solar
       half — Essen-Bredeney, about 29 km from Bochum — because Bochum carries no wind record.`,
-    yearLabel: "Year — scopes the daily-speed panels"
+    yearLabel: "Modelled year — scopes the modelled daily-speed panels"
+  },
+  combined: {
+    title: "Stochastic weather model — both resources at once",
+    sub: `The two halves are fitted separately and, unless asked otherwise, drawn separately —
+      which makes each resource individually plausible and the <strong>pair</strong> wrong. Windy
+      days are cloudy days. This view puts the two on one axis, which is the only question the
+      separate pages cannot answer: whether the resources fail at the same time.`,
+    yearLabel: "Modelled year — scopes the panel below"
   }
 };
 
@@ -1283,14 +1534,21 @@ let mode = "solar";
 function render() {
   const monthIndex = monthSelect.value === "all" ? null : Number(monthSelect.value);
   const year = Number(yearSelect.value);
+  const measuredYear = Number(measuredYearSelect.value);
+
+  if (mode === "combined") {
+    drawCombined(year);
+    document.getElementById("footnote").innerHTML = footnoteFor(mode);
+    return;
+  }
 
   if (mode === "solar") {
     drawTiles();
     drawTable();
     drawDistribution(monthIndex);
     drawSeason(monthIndex);
-    drawYear("yearMeasured", measured, year, "var(--measured)", `Measured ${year}`);
-    drawYear("yearSynthetic", synthetic, year, "var(--modelled)", `Synthetic ${year}`);
+    drawYear("yearMeasured", measured, measuredYear, "var(--measured)", `Measured ${measuredYear}`);
+    drawYear("yearSynthetic", synthetic, year, "var(--modelled)", `Modelled ${year}`);
     drawLag("lagMeasured", lagPairs(measured), "var(--measured)", "Measured", SOLAR.autocorrelation.observed);
     drawLag("lagSynthetic", lagPairs(synthetic), "var(--modelled)", "Synthetic", SOLAR.autocorrelation.synthetic);
   } else {
@@ -1298,8 +1556,8 @@ function render() {
     drawWindTable();
     drawWindDistribution(monthIndex);
     drawWindSeason(monthIndex);
-    drawWindYear("windYearMeasured", windMeasured, year, "var(--measured)", `Measured ${year}`);
-    drawWindYear("windYearSynthetic", windSynthetic, year, "var(--modelled)", `Synthetic ${year}`);
+    drawWindYear("windYearMeasured", windMeasured, measuredYear, "var(--measured)", `Measured ${measuredYear}`);
+    drawWindYear("windYearSynthetic", windSynthetic, year, "var(--modelled)", `Modelled ${year}`);
     drawWindLag("windLagMeasured", lagPairs(windMeasured), "var(--measured)", "Measured", WIND.autocorrelation.observed);
     drawWindLag("windLagSynthetic", lagPairs(windSynthetic), "var(--modelled)", "Synthetic", WIND.autocorrelation.synthetic);
     drawWindCube();
@@ -1328,13 +1586,15 @@ function footnoteFor(which) {
 }
 
 function setMode(next) {
-  if (next === "wind" && !WIND) return;
+  if ((next === "wind" || next === "combined") && !WIND) return;
   mode = next;
 
-  document.getElementById("modeSolar").setAttribute("aria-selected", String(mode === "solar"));
-  document.getElementById("modeWind").setAttribute("aria-selected", String(mode === "wind"));
+  for (const [id, name] of [["modeSolar", "solar"], ["modeWind", "wind"], ["modeCombined", "combined"]])
+    document.getElementById(id).setAttribute("aria-selected", String(mode === name));
+
   document.getElementById("solarPanels").hidden = mode !== "solar";
   document.getElementById("windPanels").hidden = mode !== "wind";
+  document.getElementById("combinedPanels").hidden = mode !== "combined";
 
   const copy = COPY[mode];
   document.getElementById("pageTitle").textContent = copy.title;
@@ -1342,14 +1602,24 @@ function setMode(next) {
   document.getElementById("yearLabel").textContent = copy.yearLabel;
   document.title = copy.title;
 
-  populateYears(mode === "solar" ? yearsAvailable : windYearsAvailable);
+  // The combined view draws only modelled data, so a measured-year control there would be a
+  // knob that does nothing.
+  document.getElementById("measuredYearField").hidden = mode === "combined";
+
+  const modelledYears = mode === "wind" ? windSyntheticYears : syntheticYears;
+  populateYears(yearSelect, modelledYears.length ? modelledYears : syntheticYears);
+  if (mode !== "combined")
+    populateYears(measuredYearSelect, mode === "solar" ? yearsAvailable : windYearsAvailable);
+
   render();
 }
 
 monthSelect.addEventListener("change", render);
 yearSelect.addEventListener("change", render);
+measuredYearSelect.addEventListener("change", render);
 document.getElementById("modeSolar").addEventListener("click", () => setMode("solar"));
 document.getElementById("modeWind").addEventListener("click", () => setMode("wind"));
+document.getElementById("modeCombined").addEventListener("click", () => setMode("combined"));
 
 document.getElementById("themeToggle").addEventListener("click", () => {
   const root = document.documentElement;
@@ -1362,8 +1632,27 @@ document.getElementById("themeToggle").addEventListener("click", () => {
 // Without a wind record the switch has nothing to switch to, so it is removed rather than
 // left as a control that does nothing.
 if (!WIND) document.getElementById("modes").remove();
+else if (!COMBINED) document.getElementById("modeCombined").remove();
 
-populateYears(yearsAvailable);
+/* The projection banner. A page headed 2027-2031 with daily curves on it LOOKS like a forecast and
+   will be read as one, so the page says plainly that it is not. This library is a stochastic
+   weather generator: the years are labels on the seasonal cycle, and the seed is the only thing
+   separating this run from any other equally plausible one. */
+if (PROJECTION) {
+  const banner = document.getElementById("banner");
+  banner.hidden = false;
+  banner.innerHTML =
+    `<strong>Projection — not a forecast.</strong> ${PROJECTION.years} modelled year` +
+    `${PROJECTION.years === 1 ? "" : "s"}, ${PROJECTION.startDate} to ${PROJECTION.endDate}, ` +
+    `seed <code>${PROJECTION.seed}</code>, drawn ` +
+    `<strong>${PROJECTION.coupled ? "coupled" : "independently"}</strong>. These days never ` +
+    `happened and are not predicted to: this is a stochastic weather generator, so the years are ` +
+    `labels on the seasonal cycle and every other seed is an equally plausible run. ` +
+    `A ${PROJECTION.years}-year span is also a much shorter record than the ` +
+    `measured one, so the seasonal and lag panels are visibly noisier than they are in twin mode — ` +
+    `that is sampling spread, not a defect.`;
+}
+
 setMode("solar");
 </script>
 </body>

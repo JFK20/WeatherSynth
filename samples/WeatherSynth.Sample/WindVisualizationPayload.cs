@@ -24,7 +24,23 @@ public static class WindVisualizationPayload
     private const double FactorBinMin = 1.0;
     private const double FactorBinMax = 2.3;
 
-    public static JsonObject Build(IReadOnlyList<DwdWindDay> days, DwdWindStation station)
+    /// <param name="days">The measured record.</param>
+    /// <param name="station">Station metadata.</param>
+    /// <param name="span">
+    /// Span and seed for the synthetic half. Omit for the measured record's own span with the
+    /// report's seed, which is what twin mode wants: like compared with like.
+    /// </param>
+    /// <param name="provided">
+    /// A synthetic half already drawn elsewhere - the coupled chain's wind stream. When given it is
+    /// used as-is rather than regenerated, because redrawing it here would produce an independent
+    /// series and silently discard the coupling.
+    /// </param>
+    public static JsonObject Build(
+        IReadOnlyList<DwdWindDay> days,
+        DwdWindStation station,
+        SyntheticSpan? span = null,
+        IReadOnlyList<SyntheticWindDay>? provided = null
+    )
     {
         var series = WindSpeedSeriesBuilder.Build(days);
         var provider = SyntheticWindProvider.FromStationDays(days, station);
@@ -33,8 +49,11 @@ public static class WindVisualizationPayload
         var start = series[0].Date;
         var end = series[^1].Date;
 
-        // The same span as the measured record, so the page compares like with like.
-        var synthetic = provider.Generate(start, end, WindFitReport.Seed).ToList();
+        var run = span ?? new SyntheticSpan(start, end, WindFitReport.Seed);
+
+        var synthetic =
+            provided as IReadOnlyList<SyntheticWindDay>
+            ?? provider.Generate(run.Start, run.End, run.Seed).ToList();
 
         // The same span and seed with persistence switched off - what the model produced before
         // the chain existed, measured rather than remembered.
@@ -43,7 +62,7 @@ public static class WindVisualizationPayload
             transferFactor: 1.0,
             model.MeanEnergyPatternFactor
         )
-            .Generate(start, end, new Random(WindFitReport.Seed))
+            .Generate(run.Start, run.End, new Random(run.Seed))
             .ToList();
 
         double speedMax = Math.Ceiling(series.Max(d => d.MeanSpeed));
@@ -85,7 +104,7 @@ public static class WindVisualizationPayload
             ["energyPatternFactor"] = FactorHistogram(series, model),
             ["months"] = MonthFits(series, model, speedMax),
             ["observed"] = Track(series.Select(d => (d.Date, d.MeanSpeed)), start),
-            ["synthetic"] = Track(synthetic.Select(d => (d.Date, d.MeanSpeed)), start),
+            ["synthetic"] = Track(synthetic.Select(d => (d.Date, d.MeanSpeed)), synthetic[0].Date),
         };
     }
 
@@ -206,6 +225,9 @@ public static class WindVisualizationPayload
     /// <para>Offsets rather than dates because the measured record has two one-day holes, and the
     /// page has to know where they are: joining across a gap would draw a line through days that
     /// were never observed, and would invent a consecutive-day pair in the lag panel.</para>
+    ///
+    /// <para>Each track carries its own start date: in projection mode the synthetic one begins
+    /// years after the record ends, and a shared origin would date every projected day wrongly.</para>
     /// </summary>
     private static JsonObject Track(
         IEnumerable<(DateOnly Date, double Speed)> series,
@@ -221,7 +243,12 @@ public static class WindVisualizationPayload
             speeds.Add(Round(speed, 3));
         }
 
-        return new JsonObject { ["offset"] = offsets, ["speed"] = speeds };
+        return new JsonObject
+        {
+            ["start"] = start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["offset"] = offsets,
+            ["speed"] = speeds,
+        };
     }
 
     /// <summary>Linearly interpolated quantile of an already-sorted list.</summary>

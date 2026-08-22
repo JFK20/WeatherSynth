@@ -235,11 +235,12 @@ public static class IndexFitReport
         ClearSkyIndexModel model,
         DateOnly start,
         DateOnly endInclusive,
-        double persistence
+        double persistence,
+        int seed = Seed
     )
     {
         var chain = new LatentAr1Chain(model, persistence);
-        var random = new Random(Seed);
+        var random = new Random(seed);
 
         for (var date = start; date <= endInclusive; date = date.AddDays(1))
             yield return (date, chain.Next(date, random));

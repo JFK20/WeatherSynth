@@ -99,7 +99,8 @@ internal static class Program
                     days,
                     station,
                     TryReadWindDays(),
-                    DwdWindStations.EssenBredeney
+                    DwdWindStations.EssenBredeney,
+                    args
                 );
 
             case "couple":
