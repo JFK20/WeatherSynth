@@ -40,13 +40,6 @@ namespace WeatherSynth.Climate
         /// <summary>Fewer observations than this in a month and the pooled fit is used instead.</summary>
         public const int MinimumSamplesPerMonth = 30;
 
-        /// <summary>
-        /// Ceiling on the fitted persistence. A latent AR(1) needs |phi| &lt; 1 to be stationary,
-        /// and anything this close to 1 is a sign the estimate has gone wrong rather than a site
-        /// with extraordinary weather.
-        /// </summary>
-        private const double MaximumPersistence = 0.99;
-
         private readonly ScaledBeta[] _monthly;
 
         private ClearSkyIndexModel(
@@ -164,49 +157,12 @@ namespace WeatherSynth.Climate
             // Order matters: phi is measured through the monthly CDFs, so they have to exist
             // first. The same ordering constraint the clear-sky ceiling imposes on the Betas,
             // one level further up.
-            double persistence = FitPersistence(dated, monthly);
+            double persistence = SeriesStatistics.LatentPersistence(
+                dated,
+                (index, month) => monthly[month - 1].CumulativeProbability(index)
+            );
 
             return new ClearSkyIndexModel(monthly, pooled, support, persistence);
-        }
-
-        /// <summary>
-        /// Lag-1 correlation of the record's normal scores, which is the AR(1) coefficient the
-        /// generator needs.
-        ///
-        /// <para>Each day is mapped through its own month's fitted CDF, giving a value that is
-        /// uniform if the fit is good, and then through the inverse normal. Because the transform
-        /// is per month, the seasonal cycle comes out with it and the resulting series carries
-        /// weather persistence and nothing else - so its lag-1 correlation <i>is</i> phi, with no
-        /// simulation loop or search required.</para>
-        /// </summary>
-        private static double FitPersistence(
-            IReadOnlyList<(DateOnly Date, double Index)> dated,
-            ScaledBeta[] monthly
-        )
-        {
-            // The Beta CDF reaches 0 and 1 exactly at the ends of the support, and the inverse
-            // normal sends those to infinity. Nudging inside costs nothing at this magnitude.
-            const double edge = 1e-12;
-
-            var latent = new List<(DateOnly Date, double Index)>(dated.Count);
-
-            foreach (var (date, index) in dated)
-            {
-                double u = monthly[date.Month - 1].CumulativeProbability(index);
-                u = Math.Clamp(u, edge, 1.0 - edge);
-                latent.Add((date, Gaussian.Quantile(u)));
-            }
-
-            // Reuses the gap-aware estimator, which is exactly right here: only genuinely
-            // consecutive days are informative about a lag-1 coefficient.
-            double phi = SeriesStatistics.Lag1Autocorrelation(latent);
-
-            // A record too short or too broken to estimate from means no persistence, not NaN
-            // irradiance downstream. Negative persistence is not a thing daily cloud does.
-            if (double.IsNaN(phi))
-                return 0.0;
-
-            return Math.Clamp(phi, 0.0, MaximumPersistence);
         }
 
         /// <summary>

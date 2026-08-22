@@ -54,6 +54,73 @@ namespace WeatherSynth.Climate
             return Correlation(yesterday, today);
         }
 
+        /// <summary>
+        /// Ceiling on a fitted persistence coefficient. A latent AR(1) needs |phi| &lt; 1 to be
+        /// stationary, and anything this close to 1 is a sign the estimate has gone wrong rather
+        /// than a site with extraordinary weather.
+        /// </summary>
+        public const double MaximumPersistence = 0.99;
+
+        /// <summary>
+        /// The lag-1 coefficient of the latent AR(1) process behind a dated series, fitted through
+        /// that series' own monthly marginals.
+        ///
+        /// <para>Each day is mapped through its own month's fitted CDF, giving a value that is
+        /// uniform if the fit is good, and then through the inverse normal. Because the transform
+        /// is per month, the seasonal cycle comes out with it and what is left carries weather
+        /// persistence alone - so the lag-1 correlation of the scores <i>is</i> phi, with no
+        /// simulation loop or search required. Fitting against the raw series instead would count
+        /// the season twice, since the twelve marginals re-supply it downstream.</para>
+        ///
+        /// <para>Quantity-agnostic, and shared by both halves of the library: a clear-sky index
+        /// and a wind speed differ only in the CDF passed in. The caller supplies a delegate
+        /// rather than an <see cref="IMonthlyMarginals"/> because this runs <i>during</i> a fit,
+        /// before the model it belongs to exists.</para>
+        /// </summary>
+        /// <param name="series">Dated observations. NaN values must already be filtered out.</param>
+        /// <param name="cumulativeProbability">
+        /// The month's fitted CDF, called as <c>(value, month)</c> with a 1-12 month.
+        /// </param>
+        /// <returns>
+        /// Phi in [0, <see cref="MaximumPersistence"/>]. A record too short or too broken to
+        /// estimate from yields 0 - no persistence - rather than a NaN that would propagate into
+        /// every generated day downstream. Negative persistence is not a thing daily weather does,
+        /// so it clamps away too.
+        /// </returns>
+        public static double LatentPersistence(
+            IEnumerable<(DateOnly Date, double Value)> series,
+            Func<double, int, double> cumulativeProbability
+        )
+        {
+            if (series is null)
+                throw new ArgumentNullException(nameof(series));
+            if (cumulativeProbability is null)
+                throw new ArgumentNullException(nameof(cumulativeProbability));
+
+            // A fitted CDF can reach 0 and 1 - exactly, at the ends of a Beta's support, or by
+            // rounding for a day far out in a Weibull's tail - and the inverse normal sends those
+            // to infinity. Nudging inside costs nothing at this magnitude.
+            const double edge = 1e-12;
+
+            var latent = new List<(DateOnly Date, double Score)>();
+
+            foreach (var (date, value) in series)
+            {
+                double u = cumulativeProbability(value, date.Month);
+                u = Math.Clamp(u, edge, 1.0 - edge);
+                latent.Add((date, Gaussian.Quantile(u)));
+            }
+
+            // The gap-aware estimator above, which is exactly right here: only genuinely
+            // consecutive days are informative about a lag-1 coefficient.
+            double phi = Lag1Autocorrelation(latent);
+
+            if (double.IsNaN(phi))
+                return 0.0;
+
+            return Math.Clamp(phi, 0.0, MaximumPersistence);
+        }
+
         private static double Correlation(IReadOnlyList<double> x, IReadOnlyList<double> y)
         {
             double meanX = x.Average();
