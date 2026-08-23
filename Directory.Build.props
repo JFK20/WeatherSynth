@@ -5,4 +5,21 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+  
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>jfk</Authors>
+    <Copyright>Copyright (c) jfk</Copyright>
+    <PackageProjectUrl>https://github.com/JFK20/WeatherSynth</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/JFK20/WeatherSynth</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Ship the license and README inside every packed nupkg. -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
 </Project>

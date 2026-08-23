@@ -5,19 +5,19 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <!-- Packaging. The Actual Package you need. This Package allows you to generate synthetic weather data -->
+  <PropertyGroup>
+    <PackageId>WeatherSynth</PackageId>
+    <Description>A stochastic weather generator: synthetic, physically-plausible daily solar irradiance and wind speed for a site.
+      Two Possible options either use the bundled default model with zero setup, or fit your own from a DWD station record.</Description>
+    <PackageTags>weather;solar;wind;synthetic-data;simulation;pv;renewable-energy;game-development</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../WeatherSynth.Core/WeatherSynth.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The DWD readers, the day aggregators and the series builders are internal: a caller
-             reaches the record through a provider's FromDwdRecord, and the -999 sentinel and the
-             J/cm² conversion are ours to change.
-
-             Single-line parsing is an implementation detail, but it is where those two live, so the
-             tests need at it. The sample needs at all of it - its summary and calibration reports
-             work on raw intervals. WeatherSynth.Api.Tests is deliberately absent, so that it sees
-             what a package consumer sees and nothing else. -->
     <InternalsVisibleTo Include="WeatherSynth.Core.Tests" />
     <InternalsVisibleTo Include="WeatherSynth.Sample" />
   </ItemGroup>

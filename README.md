@@ -9,6 +9,36 @@ This data is required without it, the project doesn't work.
 
 **Why Bochum?** Because it is the best station with data that I could find from the DWD. So if your location differs wildly from Bochum, I would change the underlying data.
 
+**This produces synthetic weather, not a forecast.** Every year returned is one statistically
+plausible realisation for the site, reproducible from its seed never a prediction of what a
+specific real-world date will actually do.
+
+## Installation
+
+```
+dotnet add package WeatherSynth
+```
+
+That pulls in `WeatherSynth.Core` (the physics) automatically
+
+## Quick start
+
+No files, no fitting: `SyntheticWeather.Default` bundles a model already fitted from the Bochum
+(solar) and Essen-Bredeney (wind) records as a few dozen coefficients, and generates from that.
+
+```csharp
+using WeatherSynth;
+
+CoupledWeatherYear year = SyntheticWeather.Default.GenerateYear(2027, seed: 4242);
+
+foreach (var day in year.Days)
+    Console.WriteLine($"{day.Date} {day.Solar.GhiKWhPerM2:F2} kWh/m²  {day.Wind.MeanSpeed:F1} m/s");
+```
+
+`SyntheticWeather.DefaultSolar` and `.DefaultWind` give you just one resource each, if you don't
+need both. Everything below this point covers fitting from your own DWD station record instead of
+the bundled one.
+
 ## Usage
 
 `SyntheticSolarProvider` is the entry point. Fit once from the station record, then ask it for
@@ -131,3 +161,7 @@ de-duplicated in favour of `historical/`, and restricted to 2009-2025.
 
 The code in this repository is licensed under the [GNU AFFERO GENERAL PUBLIC LICENSE](LICENSE). This does not cover
 the DWD data, which is licensed separately as noted above.
+
+`WeatherSynth.Core` depends on [SolarCalculator](https://www.nuget.org/packages/SolarCalculator)
+(LGPL-3.0) for solar position primitives, pulled in as an ordinary NuGet package reference. Its
+license is included alongside this one wherever WeatherSynth is distributed.
