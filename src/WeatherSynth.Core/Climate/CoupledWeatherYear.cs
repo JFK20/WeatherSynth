@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace WeatherSynth
 {
     /// <summary>One generated day of both resources, drawn together.</summary>

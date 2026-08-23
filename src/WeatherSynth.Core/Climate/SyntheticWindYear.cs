@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace WeatherSynth
 {
     /// <summary>One calendar month of a generated year, aggregated.</summary>

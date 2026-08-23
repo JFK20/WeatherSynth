@@ -1,5 +1,4 @@
 using FluentAssertions;
-using WeatherSynth.Wind;
 using Xunit;
 
 namespace WeatherSynth.Core.Tests;

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using WeatherSynth.Solar;
 
 namespace WeatherSynth.Climate

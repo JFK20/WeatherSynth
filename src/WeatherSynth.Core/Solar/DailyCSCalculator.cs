@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Innovative.SolarCalculator;
-
 namespace WeatherSynth.Solar
 {
     /// <summary>A single instantaneous sample of clear-sky irradiance.</summary>

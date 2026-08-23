@@ -1,5 +1,3 @@
-using System;
-
 namespace WeatherSynth
 {
     /// <summary>One generated day: the speed as fitted, the speed after the transfer, and the energy proxy.</summary>

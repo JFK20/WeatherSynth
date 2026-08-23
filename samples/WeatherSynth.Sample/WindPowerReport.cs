@@ -1,4 +1,3 @@
-using WeatherSynth.Climate;
 using WeatherSynth.Data;
 using WeatherSynth.Wind;
 

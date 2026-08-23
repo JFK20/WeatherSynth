@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentAssertions;
 using WeatherSynth.Data;
 using Xunit;
@@ -16,7 +17,7 @@ public class DwdWindDayTests
                 (speed, index) =>
                     DwdWindReader.ParseLine(
                         $"       1303;{Date:yyyyMMdd}{index:00};   10;"
-                            + $"{(speed?.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) ?? "-999")};"
+                            + $"{(speed?.ToString("0.0", CultureInfo.InvariantCulture) ?? "-999")};"
                             + " 250;eor"
                     )
             )

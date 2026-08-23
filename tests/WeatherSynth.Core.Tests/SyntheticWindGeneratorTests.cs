@@ -1,6 +1,5 @@
 using FluentAssertions;
 using WeatherSynth.Climate;
-using WeatherSynth.Wind;
 using Xunit;
 
 namespace WeatherSynth.Core.Tests;

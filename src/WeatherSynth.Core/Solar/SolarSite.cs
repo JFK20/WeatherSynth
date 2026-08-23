@@ -1,4 +1,3 @@
-using System;
 using WeatherSynth.Solar;
 
 namespace WeatherSynth

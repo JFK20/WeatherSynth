@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentAssertions;
 using WeatherSynth.Data;
 using Xunit;
@@ -13,7 +14,7 @@ public class WindSpeedSeriesBuilderTests
             .Select(hour =>
                 DwdWindReader.ParseLine(
                     $"       1303;{date:yyyyMMdd}{hour:00};   10;"
-                        + $"{speed.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}; 250;eor"
+                        + $"{speed.ToString("0.0", CultureInfo.InvariantCulture)}; 250;eor"
                 )
             )
             .ToList();

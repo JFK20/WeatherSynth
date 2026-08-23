@@ -1,5 +1,3 @@
-using System;
-
 namespace WeatherSynth
 {
     /// <summary>One generated day: the sampled index, the ceiling it was applied to, and the result.</summary>
