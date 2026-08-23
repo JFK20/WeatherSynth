@@ -113,6 +113,50 @@ namespace WeatherSynth.Climate
             ForMonth(month).CumulativeProbability(value);
 
         /// <summary>
+        /// Rebuilds a model from coefficients fitted earlier, without touching a record.
+        ///
+        /// <para>The wind counterpart of <see cref="ClearSkyIndexModel.FromCoefficients"/>, and it
+        /// carries the same caveat: <see cref="Fit"/> resolves thin months to the pooled fit at fit
+        /// time, so the twelve handed in here are already effective.</para>
+        ///
+        /// <para><b>The reference height is not decoration.</b> Every A and gamma belongs to it,
+        /// and a set of coefficients quoted without it describes speeds at no particular place.
+        /// The mean energy pattern factor is load-bearing too - it is what turns each generated
+        /// day's mean speed into <c>MeanCubedSpeed</c>.</para>
+        /// </summary>
+        /// <param name="monthly">Twelve fits in January-to-December order, thin months already resolved.</param>
+        /// <param name="pooled">The fit over every day, ignoring season. Carried for reporting.</param>
+        /// <param name="persistence">Lag-1 coefficient on the normal scores.</param>
+        /// <param name="referenceHeightMeters">Height above ground the speeds were measured at.</param>
+        /// <param name="meanEnergyPatternFactor">Record mean of <c>mean(v³)/mean(v)³</c>.</param>
+        internal static WindSpeedModel FromCoefficients(
+            IReadOnlyList<Weibull> monthly,
+            Weibull pooled,
+            double persistence,
+            double referenceHeightMeters,
+            double meanEnergyPatternFactor
+        )
+        {
+            if (monthly is null)
+                throw new ArgumentNullException(nameof(monthly));
+            if (monthly.Count != 12)
+                throw new ArgumentException(
+                    $"Expected twelve monthly fits, got {monthly.Count}.",
+                    nameof(monthly)
+                );
+            if (pooled is null)
+                throw new ArgumentNullException(nameof(pooled));
+
+            return new WindSpeedModel(
+                monthly.ToArray(),
+                pooled,
+                persistence,
+                referenceHeightMeters,
+                meanEnergyPatternFactor
+            );
+        }
+
+        /// <summary>
         /// Fits the model to a measured series.
         /// </summary>
         /// <param name="series">

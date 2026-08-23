@@ -146,6 +146,60 @@ namespace WeatherSynth.Climate
         }
 
         /// <summary>
+        /// Rebuilds a coupling from coefficients fitted earlier, losing nothing.
+        ///
+        /// <para>Distinct from <see cref="FromValues"/> on purpose. That one takes twelve numbers
+        /// and can only invent the rest - it averages the twelve for <see cref="Pooled"/> and
+        /// reports zero samples everywhere, which is honest for a transplanted coupling and wrong
+        /// for a restored one. This takes all three, so a restored model reports exactly what the
+        /// fit reported, <see cref="IsPooled"/> included.</para>
+        ///
+        /// <para>Like the two marginal models' equivalents, the twelve are already resolved:
+        /// <see cref="Fit"/> substitutes the pooled coefficient for thin months at fit time. The
+        /// counts are carried so <see cref="IsPooled"/> can still say which months those were.</para>
+        /// </summary>
+        /// <param name="byMonth">Twelve coefficients in January-to-December order, each in [-1, 1].</param>
+        /// <param name="counts">Twelve pair counts, in the same order.</param>
+        /// <param name="pooled">The coefficient fitted over every pair, ignoring season.</param>
+        internal static MonthlyCoupling FromCoefficients(
+            IReadOnlyList<double> byMonth,
+            IReadOnlyList<int> counts,
+            double pooled
+        )
+        {
+            if (byMonth is null)
+                throw new ArgumentNullException(nameof(byMonth));
+            if (counts is null)
+                throw new ArgumentNullException(nameof(counts));
+            if (byMonth.Count != 12)
+                throw new ArgumentException(
+                    $"Expected twelve monthly coefficients, got {byMonth.Count}.",
+                    nameof(byMonth)
+                );
+            if (counts.Count != 12)
+                throw new ArgumentException(
+                    $"Expected twelve sample counts, got {counts.Count}.",
+                    nameof(counts)
+                );
+
+            var monthly = new double[12];
+            for (int i = 0; i < 12; i++)
+            {
+                double rho = byMonth[i];
+                if (double.IsNaN(rho) || rho < -1.0 || rho > 1.0)
+                    throw new ArgumentOutOfRangeException(
+                        nameof(byMonth),
+                        rho,
+                        $"Coefficient for month {i + 1} must be a correlation in [-1, 1]."
+                    );
+
+                monthly[i] = rho;
+            }
+
+            return new MonthlyCoupling(monthly, counts.ToArray(), pooled);
+        }
+
+        /// <summary>
         /// Twelve coefficients stated directly, for tests and for callers transplanting a coupling
         /// measured elsewhere.
         /// </summary>

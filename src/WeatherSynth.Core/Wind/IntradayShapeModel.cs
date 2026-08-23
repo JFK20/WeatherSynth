@@ -81,6 +81,36 @@ namespace WeatherSynth.Wind
         public int SampleCount { get; }
 
         /// <summary>
+        /// Intercept of the log-log fit. Exposed so the fit can be written out and rebuilt without
+        /// a record - see <see cref="FromCoefficients"/>.
+        /// </summary>
+        internal double Intercept => _intercept;
+
+        /// <summary>
+        /// Slope of the log-log fit: how much gustier a fast day is than a slow one. Zero means a
+        /// single factor for every day, which is what <see cref="Constant"/> builds.
+        /// </summary>
+        internal double Slope => _slope;
+
+        /// <summary>
+        /// Rebuilds a shape model from coefficients fitted earlier, without touching a record.
+        ///
+        /// <para>Two numbers and a power law: <see cref="Fit"/> is a least squares of
+        /// <c>log(EPF)</c> on <c>log(mean speed)</c>, so the intercept and the slope are the whole
+        /// of it. The pooled factor and the sample count are carried for reporting.</para>
+        /// </summary>
+        /// <param name="intercept">Intercept of the log-log fit.</param>
+        /// <param name="slope">Slope of the log-log fit. Zero is a speed-independent factor.</param>
+        /// <param name="pooledEnergyPatternFactor">Record mean of the daily factors, ignoring speed.</param>
+        /// <param name="sampleCount">Days the fit was measured over.</param>
+        internal static IntradayShapeModel FromCoefficients(
+            double intercept,
+            double slope,
+            double pooledEnergyPatternFactor,
+            int sampleCount
+        ) => new IntradayShapeModel(intercept, slope, pooledEnergyPatternFactor, sampleCount);
+
+        /// <summary>
         /// A model with one factor for every day, for callers with no record to fit from.
         /// </summary>
         /// <param name="energyPatternFactor">

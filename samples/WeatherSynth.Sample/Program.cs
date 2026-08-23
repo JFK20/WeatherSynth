@@ -121,6 +121,29 @@ internal static class Program
                 break;
             }
 
+            case "exportmodel":
+            {
+                // Both records, for the same reason 'couple' needs both: the coupling is a third
+                // of what gets exported, and it does not exist from one file.
+                var windDays = TryReadWindDays();
+                if (windDays is null)
+                {
+                    Console.Error.WriteLine(
+                        $"'exportmodel' needs both records; could not find data/{RepositoryData.EssenWindFileName} "
+                            + "in any parent directory."
+                    );
+                    return 1;
+                }
+
+                return ModelExport.Run(
+                    days,
+                    station,
+                    windDays,
+                    DwdWindStations.EssenBredeney,
+                    args
+                );
+            }
+
             case "impact":
                 ZenithImpact.Run(days, station);
                 break;

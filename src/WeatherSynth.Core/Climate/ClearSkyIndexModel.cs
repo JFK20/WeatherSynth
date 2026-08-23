@@ -103,6 +103,43 @@ namespace WeatherSynth.Climate
             ForMonth(month).CumulativeProbability(value);
 
         /// <summary>
+        /// Rebuilds a model from coefficients fitted earlier, without touching a record.
+        ///
+        /// <para>The seam the bundled default model is loaded through: fitting is deterministic
+        /// given frozen data, so a package has no reason to carry 13 MB of CSV and redo it on every
+        /// launch. See <c>BochumEssenCoefficients</c> and the <c>exportmodel</c> sample command,
+        /// which produces it.</para>
+        ///
+        /// <para><b>The twelve must already be resolved.</b> <see cref="Fit"/> substitutes the
+        /// pooled fit for months too thin to stand alone, and it does so once, at fit time - so
+        /// what is stored is the effective distribution for each month and there is no fallback
+        /// left to re-apply here.</para>
+        /// </summary>
+        /// <param name="monthly">Twelve fits in January-to-December order, thin months already resolved.</param>
+        /// <param name="pooled">The fit over every day, ignoring season. Carried for reporting.</param>
+        /// <param name="support">Upper end of the Beta support every fit was scaled to.</param>
+        /// <param name="persistence">Lag-1 coefficient on the normal scores.</param>
+        internal static ClearSkyIndexModel FromCoefficients(
+            IReadOnlyList<ScaledBeta> monthly,
+            ScaledBeta pooled,
+            double support,
+            double persistence
+        )
+        {
+            if (monthly is null)
+                throw new ArgumentNullException(nameof(monthly));
+            if (monthly.Count != 12)
+                throw new ArgumentException(
+                    $"Expected twelve monthly fits, got {monthly.Count}.",
+                    nameof(monthly)
+                );
+            if (pooled is null)
+                throw new ArgumentNullException(nameof(pooled));
+
+            return new ClearSkyIndexModel(monthly.ToArray(), pooled, support, persistence);
+        }
+
+        /// <summary>
         /// Fits the model to a measured series.
         /// </summary>
         /// <param name="series">

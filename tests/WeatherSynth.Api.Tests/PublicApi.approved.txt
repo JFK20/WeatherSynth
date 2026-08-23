@@ -1,0 +1,201 @@
+# WeatherSynth.Core
+record struct WeatherSynth.CoupledWeatherDay : IEquatable<CoupledWeatherDay>
+    .ctor(DateOnly, SyntheticSolarDay, SyntheticWindDay)
+    DateOnly Date { get; init; }
+    SyntheticSolarDay Solar { get; init; }
+    SyntheticWindDay Wind { get; init; }
+    bool Equals(CoupledWeatherDay)
+    bool Equals(object)
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateOnly, ref SyntheticSolarDay, ref SyntheticWindDay)
+sealed class WeatherSynth.CoupledWeatherYear
+    IReadOnlyList<CoupledWeatherDay> Days { get; }
+    SyntheticSolarYear Solar { get; }
+    SyntheticWindYear Wind { get; }
+    int Seed { get; }
+    int Year { get; }
+sealed record WeatherSynth.SolarSite : IEquatable<SolarSite>
+    .ctor(double, double, double)
+    .ctor(double, double, double, TimeZoneInfo)
+    TimeZoneInfo TimeZone { get; init; }
+    bool Equals(SolarSite)
+    bool Equals(object)
+    double AltitudeMeters { get; init; }
+    double LatitudeDegrees { get; init; }
+    double LongitudeDegrees { get; init; }
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref double, ref double, ref double, ref TimeZoneInfo)
+record struct WeatherSynth.SyntheticSolarDay : IEquatable<SyntheticSolarDay>
+    .ctor(DateOnly, double, double, double)
+    DateOnly Date { get; init; }
+    bool Equals(SyntheticSolarDay)
+    bool Equals(object)
+    double ClearSkyIndex { get; init; }
+    double ClearSkyWhPerM2 { get; init; }
+    double GhiKWhPerM2 { get; }
+    double GhiWhPerM2 { get; init; }
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateOnly, ref double, ref double, ref double)
+record struct WeatherSynth.SyntheticSolarMonth : IEquatable<SyntheticSolarMonth>
+    .ctor(int, int, double, double, double)
+    bool Equals(SyntheticSolarMonth)
+    bool Equals(object)
+    double ClearSkyKWhPerM2 { get; init; }
+    double GhiKWhPerM2 { get; init; }
+    double MeanClearSkyIndex { get; init; }
+    int Days { get; init; }
+    int GetHashCode()
+    int Month { get; init; }
+    string ToString()
+    void Deconstruct(ref int, ref int, ref double, ref double, ref double)
+sealed class WeatherSynth.SyntheticSolarYear
+    IReadOnlyList<SyntheticSolarDay> Days { get; }
+    IReadOnlyList<SyntheticSolarMonth> Months { get; }
+    double ClearSkyFraction { get; }
+    double ClearSkyKWhPerM2 { get; }
+    double GhiKWhPerM2 { get; }
+    double MeanClearSkyIndex { get; }
+    int Seed { get; }
+    int Year { get; }
+record struct WeatherSynth.SyntheticWindDay : IEquatable<SyntheticWindDay>
+    .ctor(DateOnly, double, double, double)
+    DateOnly Date { get; init; }
+    bool Equals(SyntheticWindDay)
+    bool Equals(object)
+    double EnergyPatternFactor { get; }
+    double MeanCubedSpeed { get; init; }
+    double MeanSpeed { get; init; }
+    double MeanSpeedAtReference { get; init; }
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateOnly, ref double, ref double, ref double)
+record struct WeatherSynth.SyntheticWindMonth : IEquatable<SyntheticWindMonth>
+    .ctor(int, int, double, double, double)
+    bool Equals(SyntheticWindMonth)
+    bool Equals(object)
+    double MaxSpeed { get; init; }
+    double MeanCubedSpeed { get; init; }
+    double MeanSpeed { get; init; }
+    int Days { get; init; }
+    int GetHashCode()
+    int Month { get; init; }
+    string ToString()
+    void Deconstruct(ref int, ref int, ref double, ref double, ref double)
+sealed class WeatherSynth.SyntheticWindYear
+    IReadOnlyList<SyntheticWindDay> Days { get; }
+    IReadOnlyList<SyntheticWindMonth> Months { get; }
+    double EnergyPatternFactor { get; }
+    double MaxSpeed { get; }
+    double MeanCubedSpeed { get; }
+    double MeanSpeed { get; }
+    int Seed { get; }
+    int Year { get; }
+record struct WeatherSynth.TurbineDay : IEquatable<TurbineDay>
+    .ctor(DateOnly, double, double)
+    DateOnly Date { get; init; }
+    bool Equals(TurbineDay)
+    bool Equals(object)
+    double EnergyKilowattHours { get; }
+    double MeanPowerKilowatts { get; init; }
+    double MeanSpeed { get; init; }
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateOnly, ref double, ref double)
+abstract class WeatherSynth.TurbinePowerCurve
+    .ctor()
+    IReadOnlyList<double> Breakpoints { get; }
+    double CutInMetersPerSecond { get; }
+    double CutOutMetersPerSecond { get; }
+    double PowerKilowatts(double)
+    double RatedPowerKilowatts { get; }
+    static TurbinePowerCurve FromTable(IEnumerable<ValueTuple<double, double>>)
+    static TurbinePowerCurve Idealised(double, double, double, double)
+sealed class WeatherSynth.TurbineYield
+    IReadOnlyList<TurbineDay> Days { get; }
+    TurbinePowerCurve Curve { get; }
+    double CapacityFactor { get; }
+    double EnergyMegawattHours { get; }
+    double FractionOfDaysBelowCutIn { get; }
+    double MeanPowerKilowatts { get; }
+abstract class WeatherSynth.WindProfile
+    .ctor()
+    double Factor(WindSite, WindSite)
+    static WindProfile PowerLaw(double = default)
+    static readonly WindProfile LogLaw
+sealed record WeatherSynth.WindSite : IEquatable<WindSite>
+    .ctor(double, double)
+    bool Equals(WindSite)
+    bool Equals(object)
+    double HeightMeters { get; init; }
+    double RoughnessLengthMeters { get; init; }
+    double TransferFactorFrom(WindSite, WindProfile = default)
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref double, ref double)
+
+# WeatherSynth.Data
+sealed class WeatherSynth.CoupledWeatherProvider
+    CoupledWeatherYear GenerateYear(int, int)
+    CoupledWeatherYear GenerateYear(int, int, SolarSite, WindSite, WindProfile = default)
+    IEnumerable<CoupledWeatherDay> Generate(DateOnly, DateOnly, int, SolarSite = default, WindSite = default, WindProfile = default)
+    SyntheticSolarProvider Solar { get; }
+    SyntheticWindProvider Wind { get; }
+    static CoupledWeatherProvider FromDwdRecords(string, DwdStation, string, DwdWindStation)
+sealed record WeatherSynth.DwdStation : IEquatable<DwdStation>
+    .ctor(int, string, double, double, double)
+    SolarSite ToSite()
+    bool Equals(DwdStation)
+    bool Equals(object)
+    double AltitudeMeters { get; init; }
+    double LatitudeDegrees { get; init; }
+    double LongitudeDegrees { get; init; }
+    int GetHashCode()
+    int Id { get; init; }
+    string Name { get; init; }
+    string ToString()
+    void Deconstruct(ref int, ref string, ref double, ref double, ref double)
+static class WeatherSynth.DwdStations
+    static readonly DwdStation Bochum
+static class WeatherSynth.DwdTurbines
+    static TurbinePowerCurve Generic2Mw { get; }
+    static TurbinePowerCurve Tabulated2Mw { get; }
+    static WindSite HundredMetreHub { get; }
+sealed record WeatherSynth.DwdWindStation : IEquatable<DwdWindStation>
+    .ctor(int, string, double, double, double, double, double)
+    WindSite ToSite()
+    bool Equals(DwdWindStation)
+    bool Equals(object)
+    double AltitudeMeters { get; init; }
+    double AnemometerHeightMeters { get; init; }
+    double LatitudeDegrees { get; init; }
+    double LongitudeDegrees { get; init; }
+    double RoughnessLengthMeters { get; init; }
+    int GetHashCode()
+    int Id { get; init; }
+    string Name { get; init; }
+    string ToString()
+    void Deconstruct(ref int, ref string, ref double, ref double, ref double, ref double, ref double)
+static class WeatherSynth.DwdWindStations
+    static readonly DwdWindStation EssenBredeney
+sealed class WeatherSynth.SyntheticSolarProvider
+    IEnumerable<SyntheticSolarDay> Generate(DateOnly, DateOnly, int, SolarSite = default)
+    SyntheticSolarYear GenerateYear(int, int)
+    SyntheticSolarYear GenerateYear(int, int, SolarSite)
+    static SyntheticSolarProvider FromDwdRecord(string, DwdStation)
+static class WeatherSynth.SyntheticWeather
+    static CoupledWeatherProvider Default { get; }
+    static SyntheticSolarProvider DefaultSolar { get; }
+    static SyntheticWindProvider DefaultWind { get; }
+    static bool IsCreated { get; }
+sealed class WeatherSynth.SyntheticWindProvider
+    IEnumerable<SyntheticWindDay> Generate(DateOnly, DateOnly, int, WindSite = default, WindProfile = default)
+    SyntheticWindYear GenerateYear(int, int)
+    SyntheticWindYear GenerateYear(int, int, WindSite, WindProfile = default)
+    TurbineYield EstimateYield(int, int, TurbinePowerCurve, WindSite = default, WindProfile = default)
+    static SyntheticWindProvider FromDwdRecord(string, DwdWindStation)
+static class WeatherSynth.WeatherSeeds
+    static ValueTuple<int, int> Split(int)
+

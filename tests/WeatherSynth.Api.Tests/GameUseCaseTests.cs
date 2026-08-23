@@ -18,8 +18,18 @@ namespace WeatherSynthApiTests;
 /// </summary>
 public class GameUseCaseTests
 {
-    private static readonly string? SolarCsv = Locate("dwd_bochum_solar.csv");
-    private static readonly string? WindCsv = Locate("dwd_essen_wind.csv");
+    /// <summary>
+    /// The station records, or null when this machine has none. Shared with
+    /// <see cref="DefaultModelTests"/> so there is one probe rather than two.
+    /// </summary>
+    internal static readonly string? SolarCsvPath = Locate("dwd_bochum_solar.csv");
+
+    /// <inheritdoc cref="SolarCsvPath"/>
+    internal static readonly string? WindCsvPath = Locate("dwd_essen_wind.csv");
+
+    private static string? SolarCsv => SolarCsvPath;
+
+    private static string? WindCsv => WindCsvPath;
 
     private static string? Locate(string fileName)
     {
