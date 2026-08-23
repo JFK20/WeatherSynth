@@ -92,16 +92,6 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
-      # Exact filenames, not globs: dotnet nuget push does its own matching and
-      # understands `*` only, so a bracket expression like [0-9] never resolves.
-      # The matching .snupkg goes up with each .nupkg automatically.
-      #
-      # Each version is checked against nuget.org first. Re-pushing a version
-      # that is already published is rejected with 403, not the 409 that
-      # --skip-duplicate handles, so a re-run of a partly-successful publish
-      # would otherwise fail on the package that already made it through.
-      #
-      # WeatherSynth.Core first: WeatherSynth depends on it at the same version.
       - name: Push to NuGet
         env:
           VERSION: ${{ needs.build.outputs.version }}
