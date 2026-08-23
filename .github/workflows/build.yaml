@@ -16,6 +16,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
 
@@ -90,12 +92,29 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      # Exact filenames, not globs: dotnet nuget push does its own matching and
+      # understands `*` only, so a bracket expression like [0-9] never resolves.
+      # The matching .snupkg goes up with each .nupkg automatically.
+      #
+      # Each version is checked against nuget.org first. Re-pushing a version
+      # that is already published is rejected with 403, not the 409 that
+      # --skip-duplicate handles, so a re-run of a partly-successful publish
+      # would otherwise fail on the package that already made it through.
+      #
       # WeatherSynth.Core first: WeatherSynth depends on it at the same version.
       - name: Push to NuGet
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
-          dotnet nuget push "artifacts/WeatherSynth.Core.*.nupkg" \
-            --source https://api.nuget.org/v3/index.json \
-            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
-          dotnet nuget push "artifacts/WeatherSynth.[0-9]*.nupkg" \
-            --source https://api.nuget.org/v3/index.json \
-            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
+          for id in WeatherSynth.Core WeatherSynth; do
+            lower=$(echo "$id" | tr '[:upper:]' '[:lower:]')
+            if curl -sfL -o /dev/null \
+                "https://api.nuget.org/v3-flatcontainer/$lower/$VERSION/$lower.$VERSION.nupkg"; then
+              echo "$id $VERSION is already on nuget.org - skipping"
+              continue
+            fi
+            dotnet nuget push "artifacts/$id.$VERSION.nupkg" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" --skip-duplicate
+          done
