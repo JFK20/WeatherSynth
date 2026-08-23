@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace WeatherSynth.Climate
+namespace WeatherSynth
 {
     /// <summary>One calendar month of a generated year, aggregated.</summary>
     /// <param name="Month">Calendar month, 1-12.</param>
@@ -26,7 +26,7 @@ namespace WeatherSynth.Climate
     /// reproduced exactly from <see cref="Year"/> and <see cref="Seed"/> alone.</para>
     ///
     /// <para>Materialised rather than streamed, because a year is small (366 days) and callers
-    /// asking for one generally want the totals too. <see cref="SyntheticSolarGenerator.Generate"/>
+    /// asking for one generally want the totals too. The provider's <c>Generate(start, end, seed)</c>
     /// is still there for long runs.</para>
     /// </summary>
     public sealed class SyntheticSolarYear
@@ -37,7 +37,7 @@ namespace WeatherSynth.Climate
         /// <param name="year">The calendar year the days belong to.</param>
         /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
         /// <param name="days">The generated days, in date order.</param>
-        public SyntheticSolarYear(int year, int seed, IReadOnlyList<SyntheticSolarDay> days)
+        internal SyntheticSolarYear(int year, int seed, IReadOnlyList<SyntheticSolarDay> days)
         {
             if (days is null)
                 throw new ArgumentNullException(nameof(days));

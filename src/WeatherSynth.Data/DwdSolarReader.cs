@@ -11,7 +11,7 @@ namespace WeatherSynth.Data;
 /// equation of time. All timestamps here are UTC instants; <see cref="WozDate"/> carries the
 /// solar-time day the interval belongs to.
 /// </summary>
-public sealed record DwdSolarInterval
+internal sealed record DwdSolarInterval
 {
     /// <summary>Start of the reporting interval, UTC.</summary>
     public required DateTimeOffset StartUtc { get; init; }
@@ -73,7 +73,7 @@ public sealed record DwdSolarInterval
 /// <summary>
 /// Reads DWD hourly solar station files (<c>stundenwerte_ST_*</c>), semicolon-delimited.
 /// </summary>
-public static class DwdSolarReader
+internal static class DwdSolarReader
 {
     /// <summary>
     /// DWD's missing-value sentinel. Reading it as a number is the single most damaging

@@ -10,7 +10,7 @@ namespace WeatherSynth.Sample;
 /// <para>This is the step where the model stops being deterministic. Everything before it
 /// describes what the sky could deliver; this describes what it actually does.</para>
 /// </summary>
-public static class IndexFitReport
+internal static class IndexFitReport
 {
     public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
     {

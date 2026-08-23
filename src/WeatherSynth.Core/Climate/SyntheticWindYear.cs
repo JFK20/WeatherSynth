@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace WeatherSynth.Climate
+namespace WeatherSynth
 {
     /// <summary>One calendar month of a generated year, aggregated.</summary>
     /// <param name="Month">Calendar month, 1-12.</param>
@@ -40,7 +40,7 @@ namespace WeatherSynth.Climate
         /// <param name="year">The calendar year the days belong to.</param>
         /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
         /// <param name="days">The generated days, in date order.</param>
-        public SyntheticWindYear(int year, int seed, IReadOnlyList<SyntheticWindDay> days)
+        internal SyntheticWindYear(int year, int seed, IReadOnlyList<SyntheticWindDay> days)
         {
             if (days is null)
                 throw new ArgumentNullException(nameof(days));

@@ -10,7 +10,7 @@ namespace WeatherSynth.Sample;
 /// measured independently against the raw file before any of this code existed, so a
 /// disagreement means the reader or the aggregation is wrong, not the data.</para>
 /// </summary>
-public static class WindSummary
+internal static class WindSummary
 {
     public static void Run(
         IReadOnlyList<DwdWindHour> hours,

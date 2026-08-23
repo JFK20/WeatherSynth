@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace WeatherSynth.Wind
+namespace WeatherSynth
 {
     /// <summary>
     /// How much electrical power a turbine produces at a given wind speed.
@@ -19,7 +19,7 @@ namespace WeatherSynth.Wind
     /// day had windy hours, and above rated it credits full output for hours the turbine never
     /// reached. <b>Never evaluate a power curve at a daily mean speed.</b> Integrate it over a
     /// within-day distribution - <see cref="TurbineYield"/> is that, and
-    /// <see cref="IntradayShapeModel"/> supplies the distribution.</para>
+    /// it supplies the within-day distribution too.</para>
     ///
     /// <para>Two forms, behind one type so they can be compared rather than argued about, exactly
     /// as <see cref="WindProfile"/> carries the log law beside the power law.</para>

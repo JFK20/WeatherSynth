@@ -1,6 +1,7 @@
 using System;
+using WeatherSynth.Solar;
 
-namespace WeatherSynth.Solar
+namespace WeatherSynth
 {
     /// <summary>
     /// A place to generate for: everything the clear-sky ceiling needs to know about geometry.
@@ -31,7 +32,7 @@ namespace WeatherSynth.Solar
         /// was integrated at 15 minutes. Generating against a ceiling built at a different step
         /// would divide by one number and multiply by another.</para>
         /// </summary>
-        public static readonly TimeSpan DefaultStep = TimeSpan.FromMinutes(15);
+        internal static readonly TimeSpan DefaultStep = TimeSpan.FromMinutes(15);
 
         /// <summary>A site in UTC, which is what a station record aligned to solar time wants.</summary>
         public SolarSite(double latitudeDegrees, double longitudeDegrees, double altitudeMeters)
@@ -45,7 +46,7 @@ namespace WeatherSynth.Solar
         /// </summary>
         /// <param name="step">Integration step. Leave alone unless the fit was refitted to match.</param>
         /// <param name="turbidityProvider">Optional turbidity override; defaults to the Bochum site fit.</param>
-        public DailyClearSkyCalculator CreateCeiling(
+        internal DailyClearSkyCalculator CreateCeiling(
             TimeSpan? step = null,
             Func<DateTime, double>? turbidityProvider = null
         ) =>

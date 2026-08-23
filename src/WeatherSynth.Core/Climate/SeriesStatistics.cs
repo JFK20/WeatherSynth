@@ -11,7 +11,7 @@ namespace WeatherSynth.Climate
     /// are the same shape of thing here - one number a day, with gaps - and the persistence
     /// question asked of both is identical.</para>
     /// </summary>
-    public static class SeriesStatistics
+    internal static class SeriesStatistics
     {
         /// <summary>
         /// Correlation between each day's value and the previous day's.

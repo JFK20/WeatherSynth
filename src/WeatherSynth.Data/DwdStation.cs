@@ -1,6 +1,4 @@
-using WeatherSynth.Solar;
-
-namespace WeatherSynth.Data;
+namespace WeatherSynth;
 
 /// <summary>Location metadata for a DWD measurement station.</summary>
 /// <param name="Id">DWD station identifier (STATIONS_ID).</param>

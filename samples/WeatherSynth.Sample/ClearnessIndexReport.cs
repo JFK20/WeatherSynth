@@ -8,7 +8,7 @@ namespace WeatherSynth.Sample;
 /// the whole approach is sound. This is the deliverable of the calibration work everything
 /// stochastic gets fitted on top of what this produces.
 /// </summary>
-public static class ClearnessIndexReport
+internal static class ClearnessIndexReport
 {
     public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
     {

@@ -27,7 +27,7 @@ namespace WeatherSynth.Climate
     /// against wind it is negative - windy days are cloudy days - and a positive fitted value is
     /// the signature of a sign error somewhere upstream, not of an unusual site.</para>
     /// </summary>
-    public sealed class MonthlyCoupling
+    internal sealed class MonthlyCoupling
     {
         /// <summary>Fewer pairs than this in a month and the pooled coefficient is used instead.</summary>
         /// <remarks>

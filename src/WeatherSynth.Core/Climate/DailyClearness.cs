@@ -21,7 +21,7 @@ namespace WeatherSynth.Climate
     /// Irradiation that would arrive on the horizontal with no atmosphere the denominator of
     /// the classical clearness index.
     /// </param>
-    public readonly record struct DailyClearness(
+    internal readonly record struct DailyClearness(
         DateOnly Date,
         double ObservedWhPerM2,
         double ClearSkyWhPerM2,

@@ -17,7 +17,7 @@ namespace WeatherSynth.Sample;
 /// measured correlation. The figure this sends is a lower bound on the real one, and the page says
 /// so rather than quietly presenting it as the truth.</para>
 /// </summary>
-public static class CombinedPayload
+internal static class CombinedPayload
 {
     /// <summary>
     /// Cap on scatter points sent to the page.

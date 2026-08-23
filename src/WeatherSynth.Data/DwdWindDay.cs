@@ -3,7 +3,7 @@ namespace WeatherSynth.Data;
 /// <summary>
 /// One UTC calendar day of DWD wind data, aggregated from its hourly records.
 /// </summary>
-public sealed class DwdWindDay
+internal sealed class DwdWindDay
 {
     /// <summary>Hours in a complete day. DWD hourly wind files are strictly hourly.</summary>
     private const int HoursPerDay = 24;
@@ -113,7 +113,7 @@ public sealed class DwdWindDay
 }
 
 /// <summary>Groups DWD hourly wind records into UTC calendar days.</summary>
-public static class DwdWindDayAggregator
+internal static class DwdWindDayAggregator
 {
     /// <summary>
     /// Aggregates a stream of hours into days, keyed on UTC date.

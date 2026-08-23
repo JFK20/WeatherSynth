@@ -16,7 +16,7 @@ namespace WeatherSynth.Climate
     /// it, and 5.7% of the Bochum record does. Fitting on [0, 1] would force those days to the
     /// boundary and distort the whole clear end of the distribution.</para>
     /// </summary>
-    public sealed class ScaledBeta
+    internal sealed class ScaledBeta
     {
         // log B(alpha, beta) is a constant of the distribution and both Density and
         // CumulativeProbability need it. Quantile calls those two ~7 times each per solve, so

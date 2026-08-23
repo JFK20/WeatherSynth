@@ -6,7 +6,7 @@ namespace WeatherSynth.Sample;
 /// Describes what actually came out of the station file: coverage, gaps, and daily totals.
 /// Run this after any change to the reader the monthly maxima are a direct unit check.
 /// </summary>
-public static class DataSummary
+internal static class DataSummary
 {
     public static void Run(
         IReadOnlyList<DwdSolarInterval> intervals,

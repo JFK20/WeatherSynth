@@ -26,7 +26,7 @@ namespace WeatherSynth.Climate
     /// <see cref="SeriesStatistics.Lag1Autocorrelation"/> on observed against synthetic
     /// output is what says whether it worked.</para>
     /// </summary>
-    public sealed class ClearSkyIndexModel : IMonthlyMarginals
+    internal sealed class ClearSkyIndexModel : IMonthlyMarginals
     {
         /// <summary>
         /// Default upper end of the support.

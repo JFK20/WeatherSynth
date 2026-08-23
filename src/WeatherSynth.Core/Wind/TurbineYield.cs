@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using WeatherSynth.Climate;
+using WeatherSynth.Wind;
 
-namespace WeatherSynth.Wind
+namespace WeatherSynth
 {
     /// <summary>One generated day's turbine output.</summary>
     /// <param name="Date">The day.</param>
@@ -102,7 +103,7 @@ namespace WeatherSynth.Wind
         /// The within-day distribution to integrate over. <see cref="IntradayShapeModel.Fit"/> from
         /// the same record the speeds were fitted from.
         /// </param>
-        public static TurbineYield Estimate(
+        internal static TurbineYield Estimate(
             IEnumerable<SyntheticWindDay> days,
             TurbinePowerCurve curve,
             IntradayShapeModel shape
@@ -157,7 +158,7 @@ namespace WeatherSynth.Wind
         /// <param name="shape">The within-day distribution model.</param>
         /// <param name="meanSpeedAtReference">The day's mean speed at the fitting height - sets the shape.</param>
         /// <param name="meanSpeedAtTarget">The day's mean speed at the turbine - sets the scale.</param>
-        public static double MeanPowerOverDay(
+        internal static double MeanPowerOverDay(
             TurbinePowerCurve curve,
             IntradayShapeModel shape,
             double meanSpeedAtReference,

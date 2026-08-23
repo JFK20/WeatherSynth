@@ -1,6 +1,6 @@
 using System;
 
-namespace WeatherSynth.Wind
+namespace WeatherSynth
 {
     /// <summary>
     /// How wind speed changes with height above ground: the rule that carries a speed measured at

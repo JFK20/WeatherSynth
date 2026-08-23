@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace WeatherSynth.Climate
+namespace WeatherSynth
 {
     /// <summary>One generated day of both resources, drawn together.</summary>
     /// <param name="Date">The day generated. The same day in both halves, by construction.</param>
@@ -39,7 +39,7 @@ namespace WeatherSynth.Climate
         /// <param name="year">The calendar year the days belong to.</param>
         /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
         /// <param name="days">The generated days, in date order.</param>
-        public CoupledWeatherYear(int year, int seed, IReadOnlyList<CoupledWeatherDay> days)
+        internal CoupledWeatherYear(int year, int seed, IReadOnlyList<CoupledWeatherDay> days)
         {
             if (days is null)
                 throw new ArgumentNullException(nameof(days));

@@ -10,8 +10,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Single-line parsing is an implementation detail, but it is where the -999 sentinel
-             and the J/cm² conversion live, so the tests need at it. -->
+    <!-- The DWD readers, the day aggregators and the series builders are internal: a caller
+             reaches the record through a provider's FromDwdRecord, and the -999 sentinel and the
+             J/cm² conversion are ours to change.
+
+             Single-line parsing is an implementation detail, but it is where those two live, so the
+             tests need at it. The sample needs at all of it - its summary and calibration reports
+             work on raw intervals. WeatherSynth.Api.Tests is deliberately absent, so that it sees
+             what a package consumer sees and nothing else. -->
     <InternalsVisibleTo Include="WeatherSynth.Core.Tests" />
+    <InternalsVisibleTo Include="WeatherSynth.Sample" />
   </ItemGroup>
 </Project>

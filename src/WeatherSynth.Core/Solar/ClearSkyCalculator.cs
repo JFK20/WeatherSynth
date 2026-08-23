@@ -5,7 +5,7 @@ namespace WeatherSynth.Solar
     /// <summary>
     /// Instantaneous clear-sky irradiance components, in W/m².
     /// </summary>
-    public readonly struct ClearSkyIrradiance
+    internal readonly struct ClearSkyIrradiance
     {
         /// <summary>Global horizontal irradiance (W/m²).</summary>
         public double Ghi { get; }
@@ -35,7 +35,7 @@ namespace WeatherSynth.Solar
     /// de-facto reference implementation. Inputs are the apparent (refraction-corrected)
     /// solar zenith angle, the day of year, and the Linke turbidity factor for the site.
     /// </summary>
-    public static class ClearSkyIneichen
+    internal static class ClearSkyIneichen
     {
         /// <summary>
         /// Mean solar constant at 1 AU (W/m²).

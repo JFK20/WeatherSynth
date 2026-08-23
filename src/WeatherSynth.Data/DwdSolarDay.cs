@@ -3,7 +3,7 @@ namespace WeatherSynth.Data;
 /// <summary>
 /// One true-solar-time day of DWD station data, aggregated from its hourly intervals.
 /// </summary>
-public sealed class DwdSolarDay
+internal sealed class DwdSolarDay
 {
     /// <summary>Zenith angle below which an interval counts as carrying daylight.</summary>
     private const double DaylightZenithDegrees = 90.0;
@@ -116,7 +116,7 @@ public sealed class DwdSolarDay
 }
 
 /// <summary>Groups DWD hourly intervals into true-solar-time days.</summary>
-public static class DwdSolarDayAggregator
+internal static class DwdSolarDayAggregator
 {
     /// <summary>
     /// Aggregates a stream of intervals into days, keyed on true solar date.

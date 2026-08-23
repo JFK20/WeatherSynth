@@ -13,7 +13,7 @@ namespace WeatherSynth.Sample;
 /// formatting. That is the point - this command is also the worked example of how a caller
 /// asks the library for a year.</para>
 /// </summary>
-public static class YearSeriesReport
+internal static class YearSeriesReport
 {
     public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station, string[] args)
     {

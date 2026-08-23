@@ -10,7 +10,7 @@ namespace WeatherSynth.Data;
 /// a day begins by up to ~30 minutes, which is irrelevant within either model and matters only
 /// when they are joined.</para>
 /// </summary>
-public sealed record DwdWindHour
+internal sealed record DwdWindHour
 {
     /// <summary>
     /// The hour this observation is labelled with, UTC. This is the raw MESS_DATUM value.
@@ -53,7 +53,7 @@ public sealed record DwdWindHour
 /// <summary>
 /// Reads DWD hourly wind station files (<c>stundenwerte_FF_*</c>), semicolon-delimited.
 /// </summary>
-public static class DwdWindReader
+internal static class DwdWindReader
 {
     /// <summary>
     /// DWD's missing-value sentinel, shared with the solar product and just as damaging read as

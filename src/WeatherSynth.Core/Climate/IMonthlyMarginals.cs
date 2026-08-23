@@ -16,7 +16,7 @@ namespace WeatherSynth.Climate
     /// a <see cref="ScaledBeta"/> or a <see cref="Weibull"/> would put the distribution's type in
     /// the chain's signature and undo the separation.</para>
     /// </summary>
-    public interface IMonthlyMarginals
+    internal interface IMonthlyMarginals
     {
         /// <summary>
         /// The value this month's distribution falls below with probability

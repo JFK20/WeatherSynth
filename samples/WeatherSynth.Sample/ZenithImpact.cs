@@ -12,7 +12,7 @@ namespace WeatherSynth.Sample;
 /// is integrated twice, once over the library's zenith and once over DWD's own ZENIT column,
 /// and the daily totals compared.
 /// </summary>
-public static class ZenithImpact
+internal static class ZenithImpact
 {
     public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
     {

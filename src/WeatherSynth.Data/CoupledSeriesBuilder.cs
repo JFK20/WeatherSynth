@@ -28,7 +28,7 @@ namespace WeatherSynth.Data;
 /// -0.22 at the cost of a second aggregation path that could silently disagree with the one the
 /// marginals were fitted on. The marginals and the coupling must see the same days.</para>
 /// </remarks>
-public static class CoupledSeriesBuilder
+internal static class CoupledSeriesBuilder
 {
     /// <summary>
     /// Builds the paired series from two already-built daily series.

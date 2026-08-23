@@ -28,7 +28,7 @@ namespace WeatherSynth.Climate
     /// <c>γ + A·Γ(1 + 1/k)</c>, about <c>γ + 0.886·A</c> at k = 2. Conflating the scale parameter
     /// with mean wind speed is the most common error in this literature.</para>
     /// </summary>
-    public sealed class Weibull
+    internal sealed class Weibull
     {
         /// <summary>Shape parameter, k. Around 1.7-2.2 for daily mean wind speeds.</summary>
         public double Shape { get; }

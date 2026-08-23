@@ -13,7 +13,7 @@ namespace WeatherSynth.Sample;
 /// <see cref="WindSpeedSeriesBuilder"/>, <see cref="SyntheticWindProvider"/>,
 /// <see cref="GoodnessOfFit"/> - so the page and <c>windfit</c> cannot disagree about a number.</para>
 /// </summary>
-public static class WindVisualizationPayload
+internal static class WindVisualizationPayload
 {
     /// <summary>Points on the density curves sent to the page.</summary>
     private const int DensitySteps = 150;

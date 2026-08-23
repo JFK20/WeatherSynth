@@ -1,6 +1,4 @@
-using WeatherSynth.Wind;
-
-namespace WeatherSynth.Data;
+namespace WeatherSynth;
 
 /// <summary>
 /// Location metadata for a DWD wind measurement station.

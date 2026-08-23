@@ -5,7 +5,7 @@ using Innovative.SolarCalculator;
 namespace WeatherSynth.Solar
 {
     /// <summary>A single instantaneous sample of clear-sky irradiance.</summary>
-    public readonly struct ClearSkySample
+    internal readonly struct ClearSkySample
     {
         /// <summary>The instant this sample was taken at.</summary>
         public DateTimeOffset LocalTime { get; }
@@ -30,7 +30,7 @@ namespace WeatherSynth.Solar
     }
 
     /// <summary>Daily-aggregated clear-sky result.</summary>
-    public readonly struct DailyClearSky
+    internal readonly struct DailyClearSky
     {
         /// <summary>Clear-sky global horizontal irradiation for the day, in Wh/m².</summary>
         public double GhiWhPerM2 { get; }
@@ -70,7 +70,7 @@ namespace WeatherSynth.Solar
     /// through the day, asks SolarCalculator for the sun's position at each step, evaluates
     /// the clear-sky model, and sums the energy.
     /// </summary>
-    public sealed class DailyClearSkyCalculator
+    internal sealed class DailyClearSkyCalculator
     {
         private readonly double _latitude;
         private readonly double _longitude;

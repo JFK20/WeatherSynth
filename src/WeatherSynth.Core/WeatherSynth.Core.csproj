@@ -14,9 +14,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The coupled chain's innovation-correlation correction is an implementation detail of the
-             chain, but it is the one piece of that class whose formula can be checked in isolation -
-             and a wrong one is invisible everywhere else. See CoupledLatentAr1ChainTests. -->
+    <!-- The fitted models, the latent chains, the clear-sky geometry and the distribution
+             primitives are all internal: they are how the library works, not what it promises.
+             Three assemblies are allowed past that line, and each for its own reason.
+
+             WeatherSynth.Data is the other half of one library. It fits ClearSkyIndexModel and
+             WindSpeedModel and hands them to the providers, so it needs the machinery even though
+             callers do not. The split into two assemblies exists to keep this one I/O-free, not to
+             hide anything from the other.
+
+             WeatherSynth.Core.Tests: the coupled chain's innovation-correlation correction is an
+             implementation detail of the chain, but it is the one piece of that class whose formula
+             can be checked in isolation - and a wrong one is invisible everywhere else. See
+             CoupledLatentAr1ChainTests.
+
+             WeatherSynth.Sample is a diagnostic harness, not a consumer demo. Its reports exist to
+             inspect the fit - KS scores, Weibull parameters, zenith residuals - which means looking
+             at exactly the internals a consumer must never depend on. It is never packaged.
+
+             WeatherSynth.Api.Tests is deliberately absent: it compiles against the public surface
+             only, which is the whole of its job. -->
+    <InternalsVisibleTo Include="WeatherSynth.Data" />
     <InternalsVisibleTo Include="WeatherSynth.Core.Tests" />
+    <InternalsVisibleTo Include="WeatherSynth.Sample" />
   </ItemGroup>
 </Project>

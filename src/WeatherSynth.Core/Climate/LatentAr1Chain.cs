@@ -44,7 +44,7 @@ namespace WeatherSynth.Climate
     /// a run in date order, and use <see cref="Reset"/> between independent runs. One instance
     /// per thread.</para>
     /// </summary>
-    public sealed class LatentAr1Chain
+    internal sealed class LatentAr1Chain
     {
         private readonly IMonthlyMarginals _marginals;
 

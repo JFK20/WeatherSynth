@@ -37,7 +37,7 @@ namespace WeatherSynth.Wind
     /// one value. Annual energy comes out right; the spread of daily energy is narrower than
     /// reality. Anything sizing storage against a run of poor days should know that.</para>
     /// </summary>
-    public sealed class IntradayShapeModel
+    internal sealed class IntradayShapeModel
     {
         /// <summary>
         /// Bounds on the recovered shape parameter.
@@ -207,8 +207,8 @@ namespace WeatherSynth.Wind
         /// property of the day's weather - how gusty it was - and the fit that predicts it was
         /// measured against anemometer speeds. Feeding a hub-height speed in asks what the shape
         /// would be on a much windier day, and returns a steadier one than the day really was.
-        /// <see cref="Climate.SyntheticWindDay.MeanSpeedAtReference"/> is carried for exactly this,
-        /// alongside the transferred <see cref="Climate.SyntheticWindDay.MeanSpeed"/>.</para>
+        /// <see cref="SyntheticWindDay.MeanSpeedAtReference"/> is carried for exactly this,
+        /// alongside the transferred <see cref="SyntheticWindDay.MeanSpeed"/>.</para>
         /// </summary>
         /// <param name="dailyMeanSpeedAtReference">The day's mean speed at the fitting height, m/s.</param>
         public double ShapeFor(double dailyMeanSpeedAtReference) =>

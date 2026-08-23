@@ -17,7 +17,7 @@ namespace WeatherSynth.Sample;
 /// <param name="Start">First day, inclusive.</param>
 /// <param name="End">Last day, inclusive.</param>
 /// <param name="Seed">Seed. In projection mode one seed drives both resources.</param>
-public readonly record struct SyntheticSpan(DateOnly Start, DateOnly End, int Seed);
+internal readonly record struct SyntheticSpan(DateOnly Start, DateOnly End, int Seed);
 
 /// <summary>
 /// Writes the visualisation app: fits both models, generates a synthetic record over the same
@@ -32,7 +32,7 @@ public readonly record struct SyntheticSpan(DateOnly Start, DateOnly End, int Se
 /// stations, and only the solar one is required to build. With the wind record absent the page is
 /// written without its switch, which is the same data-aware contract the tests follow.</para>
 /// </summary>
-public static class VisualizationExport
+internal static class VisualizationExport
 {
     private const string TemplateFileName = "template.html";
     private const string OutputFileName = "index.html";
@@ -102,26 +102,18 @@ public static class VisualizationExport
         var span =
             projection ?? new SyntheticSpan(series[0].Date, series[^1].Date, IndexFitReport.Seed);
 
-        // Two independent streams need two seeds, and this is not a detail.
-        //
-        // Handing the same seed to both generators makes them draw the SAME standard normals in
-        // the same order, so the two latent chains move in lockstep and the resources come out
-        // strongly POSITIVELY correlated - measured at +0.75 here, against a real-world -0.22.
-        // Individually each half still looks perfect: the marginals, the persistence and the
-        // annual totals are all exactly right, and only the pairing is nonsense. That is the same
-        // failure mode coupling exists to fix, with the sign flipped and much larger.
+        // Two independent streams need two seeds, and this is not a detail: one seed for both
+        // generators makes them draw the SAME standard normals in the same order and the resources
+        // come out +0.75 correlated. WeatherSeeds.Split is that derivation, and it lives in the
+        // library rather than here because a package consumer hits the same trap - see its remarks
+        // for the full failure mode.
         //
         // Derived from the caller's seed rather than picked, so `viz 5 4242 independent` is still
         // reproducible from the 4242 alone. Twin mode is untouched: it already had two unrelated
         // seeds, one per report.
-        var streams = new Random(span.Seed);
-        var solarSpan = projection is null ? span : span with { Seed = streams.Next() };
-        var windSpan = projection is null
-            ? projection
-            : projection.Value with
-            {
-                Seed = streams.Next(),
-            };
+        var (solarSeed, windSeed) = WeatherSeeds.Split(span.Seed);
+        var solarSpan = projection is null ? span : span with { Seed = solarSeed };
+        var windSpan = projection is null ? projection : projection.Value with { Seed = windSeed };
 
         Console.WriteLine(
             options.Years is null

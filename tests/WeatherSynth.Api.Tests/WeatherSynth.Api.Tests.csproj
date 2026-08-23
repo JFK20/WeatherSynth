@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+      The contract test project. It stands where a package consumer stands: it is deliberately
+      absent from every InternalsVisibleTo list in src/, so it can only see what NuGet would ship.
+
+      WeatherSynth.Core.Tests cannot do this job - it has internals access and would not notice
+      if a type a game needs had quietly gone internal. Do not add this assembly to an
+      InternalsVisibleTo, and do not give it a WeatherSynth.* root namespace: sitting outside the
+      WeatherSynth namespace is what forces the `using WeatherSynth;` the API promises.
+    -->
+  <PropertyGroup>
+    <RootNamespace>WeatherSynthApiTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/WeatherSynth.Core/WeatherSynth.Core.csproj" />
+    <ProjectReference Include="../../src/WeatherSynth.Data/WeatherSynth.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="PublicApi.approved.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

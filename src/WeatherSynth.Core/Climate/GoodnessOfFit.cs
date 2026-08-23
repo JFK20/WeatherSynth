@@ -13,7 +13,7 @@ namespace WeatherSynth.Climate
     /// <see cref="Weibull.FitByMaximumLikelihood(IEnumerable{double})"/> - as the objective the
     /// location parameter is searched over.</para>
     /// </summary>
-    public static class GoodnessOfFit
+    internal static class GoodnessOfFit
     {
         /// <summary>
         /// Kolmogorov-Smirnov distance: the largest absolute gap between the empirical CDF of

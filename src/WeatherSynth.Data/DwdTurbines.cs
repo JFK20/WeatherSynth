@@ -1,6 +1,4 @@
-using WeatherSynth.Wind;
-
-namespace WeatherSynth.Data;
+namespace WeatherSynth;
 
 /// <summary>
 /// Worked turbine examples, so the sample and the tests share one definition rather than three

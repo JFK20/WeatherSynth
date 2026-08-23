@@ -11,7 +11,7 @@ namespace WeatherSynth.Sample;
 /// asserted: it fits both the textbook two-parameter Weibull and the three-parameter one against
 /// the same days, and prints how many months each passes.</para>
 /// </summary>
-public static class WindFitReport
+internal static class WindFitReport
 {
     /// <summary>
     /// The seed every synthetic wind run uses, so before-and-after comparisons differ only in phi

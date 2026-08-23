@@ -1,7 +1,8 @@
 using WeatherSynth.Climate;
+using WeatherSynth.Data;
 using WeatherSynth.Wind;
 
-namespace WeatherSynth.Data;
+namespace WeatherSynth;
 
 /// <summary>
 /// The library's entry point for synthetic daily wind data: fit once from a station record, then
@@ -35,7 +36,7 @@ public sealed class SyntheticWindProvider
     /// Height and roughness the model was fitted at. Used as the default generation site, and
     /// load-bearing even when generating elsewhere: it is the reference every transfer starts from.
     /// </param>
-    public SyntheticWindProvider(WindSpeedModel model, WindSite fittedAt)
+    internal SyntheticWindProvider(WindSpeedModel model, WindSite fittedAt)
         : this(model, fittedAt, IntradayShapeModel.Constant(NonNull(model).MeanEnergyPatternFactor))
     { }
 
@@ -49,7 +50,7 @@ public sealed class SyntheticWindProvider
     /// integrated over. Only <see cref="EstimateYield"/> consumes it; the speed generation above is
     /// untouched by it.
     /// </param>
-    public SyntheticWindProvider(
+    internal SyntheticWindProvider(
         WindSpeedModel model,
         WindSite fittedAt,
         IntradayShapeModel intradayShape
@@ -87,7 +88,7 @@ public sealed class SyntheticWindProvider
     /// </summary>
     /// <param name="days">Aggregated station days, unfiltered.</param>
     /// <param name="station">Station metadata. Its anemometer height becomes the fitting height.</param>
-    public static SyntheticWindProvider FromStationDays(
+    internal static SyntheticWindProvider FromStationDays(
         IEnumerable<DwdWindDay> days,
         DwdWindStation station
     )
@@ -111,13 +112,13 @@ public sealed class SyntheticWindProvider
     /// The fitted model behind this provider: the twelve monthly shapes, the persistence, and the
     /// height the whole thing belongs to.
     /// </summary>
-    public WindSpeedModel Model { get; }
+    internal WindSpeedModel Model { get; }
 
     /// <summary>
     /// How each day's wind is spread within the day - the piece a power curve needs and a daily
     /// mean speed cannot supply. See <see cref="IntradayShapeModel"/>.
     /// </summary>
-    public IntradayShapeModel IntradayShape { get; }
+    internal IntradayShapeModel IntradayShape { get; }
 
     /// <summary>
     /// A synthetic year at the height the model was fitted at.
@@ -221,7 +222,7 @@ public sealed class SyntheticWindProvider
     /// </summary>
     /// <param name="site">Site to generate for; defaults to the fitting height.</param>
     /// <param name="profile">Profile law; defaults to <see cref="WindProfile.LogLaw"/>.</param>
-    public SyntheticWindGenerator CreateGenerator(
+    internal SyntheticWindGenerator CreateGenerator(
         WindSite? site = null,
         WindProfile? profile = null
     )

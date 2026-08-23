@@ -11,7 +11,7 @@ namespace WeatherSynth.Sample;
 /// correction, so comparing it to the apparent zenith would show a spurious error that grows
 /// towards the horizon.
 /// </summary>
-public static class ZenithValidation
+internal static class ZenithValidation
 {
     public static void Run(IReadOnlyList<DwdSolarInterval> intervals, DwdStation station)
     {

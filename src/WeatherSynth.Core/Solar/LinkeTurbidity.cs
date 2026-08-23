@@ -10,7 +10,7 @@ namespace WeatherSynth.Solar
     /// atmosphere; real mid-latitude values run roughly 2-7, low in winter and high in summer.
     /// There is no formula for it. It's a lookup, or a fit.</para>
     /// </summary>
-    public sealed class LinkeTurbidityTable
+    internal sealed class LinkeTurbidityTable
     {
         private readonly double[] _monthly;
 
@@ -116,7 +116,7 @@ namespace WeatherSynth.Solar
     }
 
     /// <summary>Convenience accessors over <see cref="LinkeTurbidityTable"/>.</summary>
-    public static class LinkeTurbidity
+    internal static class LinkeTurbidity
     {
         /// <summary>
         /// The default provider: the Bochum site fit. Suitable as-is for the Lower Rhine and

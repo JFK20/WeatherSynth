@@ -9,7 +9,7 @@ namespace WeatherSynth.Sample;
 /// particularly after re-fitting Linke turbidity to confirm the magnitudes in
 /// knowledge.md §7 still hold.
 /// </summary>
-public static class ClearSkySanity
+internal static class ClearSkySanity
 {
     public static void Run(double latitude, double longitude, double altitude, string timeZoneId)
     {

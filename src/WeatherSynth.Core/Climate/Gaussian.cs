@@ -15,7 +15,7 @@ namespace WeatherSynth.Climate
     /// <para>.NET has no erf, and Core carries no numerics package, so both directions are
     /// implemented here. Between them they round-trip to about 1e-15.</para>
     /// </summary>
-    public static class Gaussian
+    internal static class Gaussian
     {
         // Acklam's coefficients for Quantile. Static, because they are constants and Quantile runs
         // once per record day inside the persistence fit - as locals they would be four heap

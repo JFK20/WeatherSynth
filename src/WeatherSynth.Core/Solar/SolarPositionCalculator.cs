@@ -18,7 +18,7 @@ namespace WeatherSynth.Solar
     ///
     /// <para>Not thread-safe: it memoises per-date terms. Use one instance per thread.</para>
     /// </summary>
-    public sealed class SolarPositionCalculator
+    internal sealed class SolarPositionCalculator
     {
         private const double DegToRad = Math.PI / 180.0;
         private const double RadToDeg = 180.0 / Math.PI;

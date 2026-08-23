@@ -1,8 +1,9 @@
 using WeatherSynth.Climate;
+using WeatherSynth.Data;
 using WeatherSynth.Solar;
 using WeatherSynth.Wind;
 
-namespace WeatherSynth.Data;
+namespace WeatherSynth;
 
 /// <summary>
 /// The library's entry point for synthetic daily solar <i>and</i> wind data drawn together: fit
@@ -17,9 +18,9 @@ namespace WeatherSynth.Data;
 ///
 /// <para><b>What it costs and what it does not.</b> Coupling does not move either resource's
 /// statistics. Each half comes back with the same twelve marginals, the same persistence and the
-/// same annual figures in distribution as the independent providers give, because a Gaussian
-/// copula reorders which days coincide and changes nothing else - see
-/// <see cref="CoupledLatentAr1Chain"/>. So the question this class answers is never "how much sun
+/// same annual figures in distribution as the independent providers give, because the dependence
+/// is imposed by a Gaussian copula: it reorders which days coincide and touches neither resource's
+/// monthly shapes nor its persistence. So the question this class answers is never "how much sun
 /// will there be" or "how much wind", both of which the single-resource providers already answer
 /// correctly. It is "how often do they fail together" - which is the whole question when sizing a
 /// hybrid PV and wind system, and one the independent providers answer wrongly and confidently.</para>
@@ -47,7 +48,7 @@ public sealed class CoupledWeatherProvider
     /// these two models' own CDFs: a coupling measured against different marginals describes a
     /// dependence between quantities these models do not produce.
     /// </param>
-    public CoupledWeatherProvider(
+    internal CoupledWeatherProvider(
         SyntheticSolarProvider solar,
         SyntheticWindProvider wind,
         MonthlyCoupling coupling
@@ -103,7 +104,7 @@ public sealed class CoupledWeatherProvider
     /// <param name="solarStation">Solar station metadata.</param>
     /// <param name="windDays">Aggregated wind station days, unfiltered.</param>
     /// <param name="windStation">Wind station metadata.</param>
-    public static CoupledWeatherProvider FromStationDays(
+    internal static CoupledWeatherProvider FromStationDays(
         IEnumerable<DwdSolarDay> solarDays,
         DwdStation solarStation,
         IEnumerable<DwdWindDay> windDays,
@@ -152,7 +153,7 @@ public sealed class CoupledWeatherProvider
     /// The twelve fitted coupling coefficients - the whole of what this class adds over the two
     /// providers it holds.
     /// </summary>
-    public MonthlyCoupling Coupling { get; }
+    internal MonthlyCoupling Coupling { get; }
 
     /// <summary>
     /// A jointly generated year at both fitting sites.
@@ -254,7 +255,7 @@ public sealed class CoupledWeatherProvider
     /// <para>Not thread-safe, and it carries both of the previous day's values; one per thread, and
     /// <see cref="CoupledLatentAr1Chain.Reset"/> between runs.</para>
     /// </summary>
-    public CoupledLatentAr1Chain CreateChain() =>
+    internal CoupledLatentAr1Chain CreateChain() =>
         new CoupledLatentAr1Chain(_solar.Model, _wind.Model, Coupling);
 
     private static IEnumerable<CoupledWeatherDay> Iterate(

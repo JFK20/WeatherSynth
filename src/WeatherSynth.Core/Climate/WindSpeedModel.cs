@@ -25,7 +25,7 @@ namespace WeatherSynth.Climate
     /// was built on - so neither the fit nor anything derived from it may be quoted at another
     /// resolution without refitting.</para>
     /// </summary>
-    public sealed class WindSpeedModel : IMonthlyMarginals
+    internal sealed class WindSpeedModel : IMonthlyMarginals
     {
         /// <summary>Fewer observations than this in a month and the pooled fit is used instead.</summary>
         public const int MinimumSamplesPerMonth = 30;

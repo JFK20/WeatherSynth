@@ -1,7 +1,8 @@
 using WeatherSynth.Climate;
+using WeatherSynth.Data;
 using WeatherSynth.Solar;
 
-namespace WeatherSynth.Data;
+namespace WeatherSynth;
 
 /// <summary>
 /// The library's entry point for synthetic daily solar data: fit once from a station record,
@@ -35,7 +36,7 @@ public sealed class SyntheticSolarProvider
     /// Site the model was fitted at. Used as the default generation site, and worth carrying
     /// even when generating elsewhere: it is what the transfer assumption is about.
     /// </param>
-    public SyntheticSolarProvider(ClearSkyIndexModel model, SolarSite fittedAt)
+    internal SyntheticSolarProvider(ClearSkyIndexModel model, SolarSite fittedAt)
     {
         Model = model ?? throw new ArgumentNullException(nameof(model));
         _fittedAt = fittedAt ?? throw new ArgumentNullException(nameof(fittedAt));
@@ -64,7 +65,7 @@ public sealed class SyntheticSolarProvider
     /// </summary>
     /// <param name="days">Aggregated station days, unfiltered.</param>
     /// <param name="station">Station metadata. Its coordinates become the fitting geometry.</param>
-    public static SyntheticSolarProvider FromStationDays(
+    internal static SyntheticSolarProvider FromStationDays(
         IEnumerable<DwdSolarDay> days,
         DwdStation station
     )
@@ -86,7 +87,7 @@ public sealed class SyntheticSolarProvider
     /// <para>Exposed because it is the whole of what was learned, and callers reporting on the
     /// model - or checking a fit before trusting a year - need it.</para>
     /// </summary>
-    public ClearSkyIndexModel Model { get; }
+    internal ClearSkyIndexModel Model { get; }
 
     /// <summary>
     /// A synthetic year at the site the model was fitted at.
@@ -142,7 +143,7 @@ public sealed class SyntheticSolarProvider
     /// weather; one per thread, and <see cref="SyntheticSolarGenerator.Reset"/> between runs.</para>
     /// </summary>
     /// <param name="site">Site to generate for; defaults to the fitting station.</param>
-    public SyntheticSolarGenerator CreateGenerator(SolarSite? site = null)
+    internal SyntheticSolarGenerator CreateGenerator(SolarSite? site = null)
     {
         var target = site ?? _fittedAt;
         return new SyntheticSolarGenerator(Model, target.CreateCeiling());

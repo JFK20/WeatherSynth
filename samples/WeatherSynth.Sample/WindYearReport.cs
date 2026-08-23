@@ -14,7 +14,7 @@ namespace WeatherSynth.Sample;
 /// formatting. That is the point - this command doubles as the worked example of how a caller asks
 /// the library for a year.</para>
 /// </summary>
-public static class WindYearReport
+internal static class WindYearReport
 {
     /// <summary>Default seed, shared with the fit report so runs are comparable.</summary>
     private const int DefaultSeed = 20260803;

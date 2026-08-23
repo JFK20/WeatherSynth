@@ -6,7 +6,7 @@ namespace WeatherSynth.Data;
 /// The station files are large and live outside the source tree, so tests and samples have to
 /// find them by walking up from the running assembly rather than by relative path.
 /// </summary>
-public static class RepositoryData
+internal static class RepositoryData
 {
     /// <summary>Filename of the DWD Bochum hourly solar record.</summary>
     public const string BochumFileName = "dwd_bochum_solar.csv";

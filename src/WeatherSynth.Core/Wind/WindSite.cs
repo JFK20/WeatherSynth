@@ -1,11 +1,11 @@
 using System;
 
-namespace WeatherSynth.Wind
+namespace WeatherSynth
 {
     /// <summary>
     /// A place to generate for: a height above ground and the roughness of the terrain around it.
     ///
-    /// <para>The wind counterpart of <see cref="WeatherSynth.Solar.SolarSite"/>, and it plays the
+    /// <para>The wind counterpart of <see cref="SolarSite"/>, and it plays the
     /// same role - the half of the model that is <i>not</i> transferable. The fitted speed
     /// distributions belong to one anemometer at one height; this is what carries them somewhere
     /// else.</para>

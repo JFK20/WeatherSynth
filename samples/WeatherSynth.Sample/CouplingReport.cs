@@ -11,7 +11,7 @@ namespace WeatherSynth.Sample;
 /// changes <b>which days coincide</b> and nothing else. So this report has to show two things -
 /// that the dependence is delivered, and that neither marginal moved while it was.</para>
 /// </summary>
-public static class CouplingReport
+internal static class CouplingReport
 {
     /// <summary>Seed for the synthetic run this report scores. Fixed, so reruns are comparable.</summary>
     private const int Seed = 20260822;

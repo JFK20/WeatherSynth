@@ -16,7 +16,7 @@ namespace WeatherSynth.Sample;
 ///   * declination error dominates  → a date/epoch problem in the solar-position algorithm
 ///   * hour-angle error dominates   → equation of time, longitude, or timestamp convention
 /// </summary>
-public static class ZenithDecomposition
+internal static class ZenithDecomposition
 {
     private const double DegToRad = Math.PI / 180.0;
     private const double RadToDeg = 180.0 / Math.PI;

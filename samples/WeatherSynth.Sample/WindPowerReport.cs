@@ -14,7 +14,7 @@ namespace WeatherSynth.Sample;
 /// <see cref="WindFitReport"/> prints the two- against three-parameter Weibull rather than claiming
 /// the choice.</para>
 /// </summary>
-public static class WindPowerReport
+internal static class WindPowerReport
 {
     /// <summary>Seed for the synthetic year, fixed so reruns are comparable.</summary>
     private const int Seed = 20260822;

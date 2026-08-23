@@ -18,7 +18,7 @@ namespace WeatherSynth.Climate
     /// because it cannot be recovered from <paramref name="MeanSpeed"/> - see
     /// <see cref="EnergyPatternFactor"/>.
     /// </param>
-    public readonly record struct DailyWindSpeed(
+    internal readonly record struct DailyWindSpeed(
         DateOnly Date,
         double MeanSpeed,
         double MeanCubedSpeed

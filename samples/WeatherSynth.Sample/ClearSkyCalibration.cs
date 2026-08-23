@@ -13,7 +13,7 @@ namespace WeatherSynth.Sample;
 /// mass</b>: the Perez term is <c>exp(0.01·airmass^1.8)</c>, so picking wrong leaves a residual
 /// that slopes with air mass even after turbidity has soaked up the constant part.</para>
 /// </summary>
-public static class ClearSkyCalibration
+internal static class ClearSkyCalibration
 {
     /// <summary>Sub-steps per hourly interval when integrating the model over a measurement interval.</summary>
     private const int SubStepsPerInterval = 4;

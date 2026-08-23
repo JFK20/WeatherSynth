@@ -6,7 +6,7 @@ namespace WeatherSynth.Data;
 /// <summary>
 /// Turns measured station days into a clearness-index series.
 /// </summary>
-public static class ClearnessIndexBuilder
+internal static class ClearnessIndexBuilder
 {
     /// <summary>
     /// Builds the daily clearness series for a station.

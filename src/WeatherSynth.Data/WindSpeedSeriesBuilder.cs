@@ -11,7 +11,7 @@ namespace WeatherSynth.Data;
 /// a calculation. What it does carry is the decision about <i>which</i> days are admissible, which
 /// is the part that would otherwise be re-made, differently, at each call site.
 /// </remarks>
-public static class WindSpeedSeriesBuilder
+internal static class WindSpeedSeriesBuilder
 {
     /// <summary>
     /// Builds the daily wind-speed series for a station.
