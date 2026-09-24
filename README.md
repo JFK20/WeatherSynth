@@ -97,7 +97,7 @@ The repo has 3 folders:
    - `windyear`: prints one synthetic wind year at daily resolution `windyear [year] [seed]`
    - `windpower`: turbine yield, checked against the record's own hourly energy
 
-It is built for .NET 9.0.
+It is built for .NET 10.0.
 
 It supports Global Radiation, which can be used for PV generation calculations, and daily mean
 wind speed. `SyntheticWindProvider` is the wind entry point and works like the solar one:

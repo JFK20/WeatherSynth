@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       # A tag v1.2.3 builds as 1.2.3; every other build uses the version in
       # Directory.Build.props with a -ci.<run> suffix so it can never be
@@ -76,7 +76,7 @@ jobs:
     steps:
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - uses: actions/download-artifact@v8
         with:
