@@ -15,7 +15,7 @@ internal static class IndexFitReport
 {
     public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station)
     {
-        var series = BuildSeries(days, station);
+        var series = SyntheticSolarProvider.BuildSeries(days, station);
         var model = ClearSkyIndexModel.Fit(series);
 
         Console.WriteLine($"=== Monthly Beta fits, support [0, {model.Support:F2}] ===");
@@ -45,16 +45,6 @@ internal static class IndexFitReport
 
         GoodnessOfFit(series, model);
         Persistence(series, model, station);
-    }
-
-    /// <summary>Builds the index series, applying both quality filters knowledge.md §11 calls for.</summary>
-    internal static IReadOnlyList<DailyClearness> BuildSeries(
-        IReadOnlyList<DwdSolarDay> days,
-        DwdSolarStation station
-    )
-    {
-        var usable = days.Where(d => d.IsUsable).ToList();
-        return ClearnessIndexBuilder.Build(usable, station);
     }
 
     private static void GoodnessOfFit(

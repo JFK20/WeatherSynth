@@ -81,7 +81,7 @@ internal static class VisualizationExport
             return 1;
         }
 
-        var series = IndexFitReport.BuildSeries(days, station);
+        var series = SyntheticSolarProvider.BuildSeries(days, station);
         var model = ClearSkyIndexModel.Fit(series);
 
         // Projection mode covers whole future calendar years - whole ones, because the season

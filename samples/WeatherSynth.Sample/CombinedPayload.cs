@@ -35,10 +35,7 @@ internal static class CombinedPayload
         bool coupled
     )
     {
-        var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsUsable),
-            station
-        );
+        var clearness = SyntheticSolarProvider.BuildSeries(solarDays, station);
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
         var paired = CoupledSeriesBuilder.Build(clearness, speeds);
 

@@ -194,10 +194,7 @@ public class CoupledWeatherProviderTests
         var solarDays = DwdSolarDayAggregator.ToDays(DwdSolarReader.Read(solarPath));
         var windDays = DwdWindDayAggregator.ToDays(DwdWindReader.Read(windPath));
 
-        var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsUsable),
-            DwdSolarStations.Bochum
-        );
+        var clearness = SyntheticSolarProvider.BuildSeries(solarDays, DwdSolarStations.Bochum);
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
 
         return CoupledSeriesBuilder

@@ -37,10 +37,7 @@ internal static class CouplingReport
             windStation
         );
 
-        var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsUsable),
-            solarStation
-        );
+        var clearness = SyntheticSolarProvider.BuildSeries(solarDays, solarStation);
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
         var paired = CoupledSeriesBuilder.Build(clearness, speeds);
 
