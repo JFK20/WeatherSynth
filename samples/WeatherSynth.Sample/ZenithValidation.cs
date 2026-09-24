@@ -13,7 +13,7 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class ZenithValidation
 {
-    public static void Run(IReadOnlyList<DwdSolarInterval> intervals, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarInterval> intervals, DwdSolarStation station)
     {
         Console.WriteLine("=== Solar position vs DWD ZENIT column ===");
         Console.WriteLine(
@@ -95,7 +95,7 @@ internal static class ZenithValidation
     /// around the nominal position and keeping whichever latitude/longitude minimises the
     /// residual. Confirms the metadata rather than taking it on trust.
     /// </summary>
-    public static void FitCoordinates(IReadOnlyList<DwdSolarInterval> intervals, DwdStation station)
+    public static void FitCoordinates(IReadOnlyList<DwdSolarInterval> intervals, DwdSolarStation station)
     {
         Console.WriteLine("=== Fitting station coordinates from ZENIT ===");
 
@@ -161,7 +161,7 @@ internal static class ZenithValidation
         Console.WriteLine();
     }
 
-    private static double Rmse(IReadOnlyList<DwdSolarInterval> intervals, DwdStation station)
+    private static double Rmse(IReadOnlyList<DwdSolarInterval> intervals, DwdSolarStation station)
     {
         var calculator = Build(station);
         double sumSquared = 0.0;
@@ -176,7 +176,7 @@ internal static class ZenithValidation
         return Math.Sqrt(sumSquared / intervals.Count);
     }
 
-    private static DailyClearSkyCalculator Build(DwdStation station) =>
+    private static DailyClearSkyCalculator Build(DwdSolarStation station) =>
         new(
             station.LatitudeDegrees,
             station.LongitudeDegrees,

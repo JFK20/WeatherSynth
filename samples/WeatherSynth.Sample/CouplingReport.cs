@@ -1,5 +1,6 @@
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
+using WeatherSynth.Statistics;
 
 namespace WeatherSynth.Sample;
 
@@ -24,7 +25,7 @@ internal static class CouplingReport
 
     public static void Run(
         IReadOnlyList<DwdSolarDay> solarDays,
-        DwdStation solarStation,
+        DwdSolarStation solarStation,
         IReadOnlyList<DwdWindDay> windDays,
         DwdWindStation windStation
     )
@@ -36,10 +37,7 @@ internal static class CouplingReport
             windStation
         );
 
-        var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsComplete && !d.HasImplausibleZeros),
-            solarStation
-        );
+        var clearness = SyntheticSolarProvider.BuildSeries(solarDays, solarStation);
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
         var paired = CoupledSeriesBuilder.Build(clearness, speeds);
 
@@ -128,7 +126,7 @@ internal static class CouplingReport
     )
     {
         var sunshineByDate = solarDays
-            .Where(d => d.IsComplete && !d.HasImplausibleZeros)
+            .Where(d => d.IsUsable)
             .ToDictionary(d => d.Date, d => d.SunshineMinutes);
 
         var pairs = new List<(int Month, double Sunshine, double Speed)>();

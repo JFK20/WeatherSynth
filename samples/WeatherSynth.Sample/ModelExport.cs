@@ -36,7 +36,7 @@ internal static class ModelExport
 
     public static int Run(
         IReadOnlyList<DwdSolarDay> solarDays,
-        DwdStation solarStation,
+        DwdSolarStation solarStation,
         IReadOnlyList<DwdWindDay> windDays,
         DwdWindStation windStation,
         string[] args
@@ -95,7 +95,7 @@ internal static class ModelExport
         IntradayShapeModel intraday,
         MonthlyCoupling coupling,
         IReadOnlyList<DwdSolarDay> solarDays,
-        DwdStation solarStation,
+        DwdSolarStation solarStation,
         IReadOnlyList<DwdWindDay> windDays,
         DwdWindStation windStation
     )
@@ -132,7 +132,7 @@ internal static class ModelExport
             .Append(
                 "//     at runtime from the site's geometry and the fitted Linke turbidity table, and\n"
             )
-            .Append("//     both sites, which are already public constants (DwdStations.Bochum,\n")
+            .Append("//     both sites, which are already public constants (DwdSolarStations.Bochum,\n")
             .Append(
                 "//     DwdWindStations.EssenBredeney). Only the stochastic half is frozen here.\n"
             )

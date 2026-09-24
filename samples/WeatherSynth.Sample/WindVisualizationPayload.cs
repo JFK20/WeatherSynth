@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
+using WeatherSynth.Statistics;
 
 namespace WeatherSynth.Sample;
 

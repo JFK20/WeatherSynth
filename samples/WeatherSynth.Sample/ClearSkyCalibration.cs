@@ -34,7 +34,7 @@ internal static class ClearSkyCalibration
     /// </summary>
     private const double MinElevationDegrees = 5.0;
 
-    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station)
     {
         var clearDays = SelectClearDays(days);
         Console.WriteLine($"=== Clear-day calibration set: {clearDays.Count} days ===");
@@ -71,7 +71,7 @@ internal static class ClearSkyCalibration
     /// </summary>
     private static void ReportDailyTotals(
         IReadOnlyList<ClearSample> samples,
-        DwdStation station,
+        DwdSolarStation station,
         double[] withPerez,
         double[] withoutPerez
     )
@@ -168,7 +168,7 @@ internal static class ClearSkyCalibration
 
     private static List<ClearSample> BuildSamples(
         IReadOnlyList<DwdSolarDay> clearDays,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         var position = new SolarPositionCalculator(
@@ -262,7 +262,7 @@ internal static class ClearSkyCalibration
     /// </summary>
     private static double[] Calibrate(
         IReadOnlyList<ClearSample> samples,
-        DwdStation station,
+        DwdSolarStation station,
         bool perezEnhancement
     )
     {
@@ -343,7 +343,7 @@ internal static class ClearSkyCalibration
     /// </summary>
     private static void ReportAirMassResidual(
         IReadOnlyList<ClearSample> samples,
-        DwdStation station,
+        DwdSolarStation station,
         double[] withPerez,
         double[] withoutPerez
     )
@@ -404,7 +404,7 @@ internal static class ClearSkyCalibration
 
     private static double MeanResidual(
         IReadOnlyList<ClearSample> samples,
-        DwdStation station,
+        DwdSolarStation station,
         double[] turbidity,
         bool perez
     )

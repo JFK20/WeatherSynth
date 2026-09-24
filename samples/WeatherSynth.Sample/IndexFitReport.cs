@@ -1,6 +1,7 @@
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
 using WeatherSynth.Solar;
+using WeatherSynth.Statistics;
 
 namespace WeatherSynth.Sample;
 
@@ -12,9 +13,9 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class IndexFitReport
 {
-    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station)
     {
-        var series = BuildSeries(days, station);
+        var series = SyntheticSolarProvider.BuildSeries(days, station);
         var model = ClearSkyIndexModel.Fit(series);
 
         Console.WriteLine($"=== Monthly Beta fits, support [0, {model.Support:F2}] ===");
@@ -46,16 +47,6 @@ internal static class IndexFitReport
         Persistence(series, model, station);
     }
 
-    /// <summary>Builds the index series, applying both quality filters knowledge.md §11 calls for.</summary>
-    internal static IReadOnlyList<DailyClearness> BuildSeries(
-        IReadOnlyList<DwdSolarDay> days,
-        DwdStation station
-    )
-    {
-        var usable = days.Where(d => d.IsComplete && !d.HasImplausibleZeros).ToList();
-        return ClearnessIndexBuilder.Build(usable, station);
-    }
-
     private static void GoodnessOfFit(
         IReadOnlyList<DailyClearness> series,
         ClearSkyIndexModel model
@@ -74,7 +65,7 @@ internal static class IndexFitReport
             var values = group.Select(d => d.ClearSkyIndex).ToList();
             double ks = KolmogorovSmirnov(values, model.ForMonth(group.Key));
 
-            double critical = Climate.GoodnessOfFit.CriticalValueFivePercent(
+            double critical = Statistics.GoodnessOfFit.CriticalValueFivePercent(
                 values.Count
             );
             if (ks > critical)
@@ -118,7 +109,7 @@ internal static class IndexFitReport
     private static void Persistence(
         IReadOnlyList<DailyClearness> series,
         ClearSkyIndexModel model,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         Console.WriteLine("=== Does the generator reproduce cloud persistence? ===");
@@ -246,7 +237,7 @@ internal static class IndexFitReport
             yield return (date, chain.Next(date, random));
     }
 
-    internal static DailyClearSkyCalculator Ceiling(DwdStation station) =>
+    internal static DailyClearSkyCalculator Ceiling(DwdSolarStation station) =>
         new(
             station.LatitudeDegrees,
             station.LongitudeDegrees,
@@ -260,7 +251,7 @@ internal static class IndexFitReport
     /// lives in Core, since the Weibull fit needs the same one against a different CDF.
     /// </summary>
     private static double KolmogorovSmirnov(List<double> values, ScaledBeta fit) =>
-        Climate.GoodnessOfFit.KolmogorovSmirnovDistance(
+        Statistics.GoodnessOfFit.KolmogorovSmirnovDistance(
             values,
             fit.CumulativeProbability
         );

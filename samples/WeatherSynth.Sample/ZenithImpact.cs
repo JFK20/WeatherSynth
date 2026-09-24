@@ -14,7 +14,7 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class ZenithImpact
 {
-    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station)
     {
         Console.WriteLine("=== Effect of the zenith residual on daily clear-sky GHI ===");
         Console.WriteLine();

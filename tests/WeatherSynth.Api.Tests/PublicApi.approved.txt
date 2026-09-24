@@ -143,11 +143,11 @@ sealed class WeatherSynth.CoupledWeatherProvider
     IEnumerable<CoupledWeatherDay> Generate(DateOnly, DateOnly, int, SolarSite = default, WindSite = default, WindProfile = default)
     SyntheticSolarProvider Solar { get; }
     SyntheticWindProvider Wind { get; }
-    static CoupledWeatherProvider FromDwdRecords(string, DwdStation, string, DwdWindStation)
-sealed record WeatherSynth.DwdStation : IEquatable<DwdStation>
+    static CoupledWeatherProvider FromDwdRecords(string, DwdSolarStation, string, DwdWindStation)
+sealed record WeatherSynth.DwdSolarStation : IEquatable<DwdSolarStation>
     .ctor(int, string, double, double, double)
     SolarSite ToSite()
-    bool Equals(DwdStation)
+    bool Equals(DwdSolarStation)
     bool Equals(object)
     double AltitudeMeters { get; init; }
     double LatitudeDegrees { get; init; }
@@ -157,12 +157,8 @@ sealed record WeatherSynth.DwdStation : IEquatable<DwdStation>
     string Name { get; init; }
     string ToString()
     void Deconstruct(ref int, ref string, ref double, ref double, ref double)
-static class WeatherSynth.DwdStations
-    static readonly DwdStation Bochum
-static class WeatherSynth.DwdTurbines
-    static TurbinePowerCurve Generic2Mw { get; }
-    static TurbinePowerCurve Tabulated2Mw { get; }
-    static WindSite HundredMetreHub { get; }
+static class WeatherSynth.DwdSolarStations
+    static readonly DwdSolarStation Bochum
 sealed record WeatherSynth.DwdWindStation : IEquatable<DwdWindStation>
     .ctor(int, string, double, double, double, double, double)
     WindSite ToSite()
@@ -180,11 +176,15 @@ sealed record WeatherSynth.DwdWindStation : IEquatable<DwdWindStation>
     void Deconstruct(ref int, ref string, ref double, ref double, ref double, ref double, ref double)
 static class WeatherSynth.DwdWindStations
     static readonly DwdWindStation EssenBredeney
+static class WeatherSynth.ReferenceTurbines
+    static TurbinePowerCurve Generic2Mw { get; }
+    static TurbinePowerCurve Tabulated2Mw { get; }
+    static WindSite HundredMetreHub { get; }
 sealed class WeatherSynth.SyntheticSolarProvider
     IEnumerable<SyntheticSolarDay> Generate(DateOnly, DateOnly, int, SolarSite = default)
     SyntheticSolarYear GenerateYear(int, int)
     SyntheticSolarYear GenerateYear(int, int, SolarSite)
-    static SyntheticSolarProvider FromDwdRecord(string, DwdStation)
+    static SyntheticSolarProvider FromDwdRecord(string, DwdSolarStation)
 static class WeatherSynth.SyntheticWeather
     static CoupledWeatherProvider Default { get; }
     static SyntheticSolarProvider DefaultSolar { get; }

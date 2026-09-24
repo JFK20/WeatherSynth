@@ -14,7 +14,7 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class YearSeriesReport
 {
-    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station, string[] args)
+    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station, string[] args)
     {
         int year = ArgumentAt(args, 1) ?? DateTime.UtcNow.Year;
         int seed = ArgumentAt(args, 2) ?? IndexFitReport.Seed;

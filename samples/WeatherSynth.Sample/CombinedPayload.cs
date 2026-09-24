@@ -30,15 +30,12 @@ internal static class CombinedPayload
 
     public static JsonObject Build(
         IReadOnlyList<DwdSolarDay> solarDays,
-        DwdStation station,
+        DwdSolarStation station,
         IReadOnlyList<DwdWindDay> windDays,
         bool coupled
     )
     {
-        var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsComplete && !d.HasImplausibleZeros),
-            station
-        );
+        var clearness = SyntheticSolarProvider.BuildSeries(solarDays, station);
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
         var paired = CoupledSeriesBuilder.Build(clearness, speeds);
 

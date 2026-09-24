@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
+using WeatherSynth.Statistics;
 
 namespace WeatherSynth.Sample;
 
@@ -40,7 +41,7 @@ internal static class VisualizationExport
 
     public static int Run(
         IReadOnlyList<DwdSolarDay> days,
-        DwdStation station,
+        DwdSolarStation station,
         IReadOnlyList<DwdWindDay>? windDays = null,
         DwdWindStation? windStation = null,
         string[]? args = null
@@ -80,7 +81,7 @@ internal static class VisualizationExport
             return 1;
         }
 
-        var series = IndexFitReport.BuildSeries(days, station);
+        var series = SyntheticSolarProvider.BuildSeries(days, station);
         var model = ClearSkyIndexModel.Fit(series);
 
         // Projection mode covers whole future calendar years - whole ones, because the season
@@ -230,7 +231,7 @@ internal static class VisualizationExport
         IReadOnlyList<SyntheticSolarDay> synthetic,
         IReadOnlyList<(DateOnly Date, double Index)> independent,
         ClearSkyIndexModel model,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         var start = observed[0].Date;

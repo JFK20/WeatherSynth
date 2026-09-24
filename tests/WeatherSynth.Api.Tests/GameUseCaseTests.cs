@@ -55,7 +55,7 @@ public class GameUseCaseTests
 
         var weather = CoupledWeatherProvider.FromDwdRecords(
             SolarCsv,
-            DwdStations.Bochum,
+            DwdSolarStations.Bochum,
             WindCsv,
             DwdWindStations.EssenBredeney
         );
@@ -97,8 +97,8 @@ public class GameUseCaseTests
         var yield = wind.EstimateYield(
             2027,
             seed: 4242,
-            curve: DwdTurbines.Generic2Mw,
-            site: DwdTurbines.HundredMetreHub
+            curve: ReferenceTurbines.Generic2Mw,
+            site: ReferenceTurbines.HundredMetreHub
         );
 
         yield.Days.Should().HaveCount(365);
@@ -110,8 +110,8 @@ public class GameUseCaseTests
         var underPowerLaw = wind.EstimateYield(
             2027,
             seed: 4242,
-            curve: DwdTurbines.Generic2Mw,
-            site: DwdTurbines.HundredMetreHub,
+            curve: ReferenceTurbines.Generic2Mw,
+            site: ReferenceTurbines.HundredMetreHub,
             profile: WindProfile.PowerLaw()
         );
 
@@ -124,7 +124,7 @@ public class GameUseCaseTests
         if (SolarCsv is null || WindCsv is null)
             return;
 
-        var solar = SyntheticSolarProvider.FromDwdRecord(SolarCsv, DwdStations.Bochum);
+        var solar = SyntheticSolarProvider.FromDwdRecord(SolarCsv, DwdSolarStations.Bochum);
         var wind = SyntheticWindProvider.FromDwdRecord(WindCsv, DwdWindStations.EssenBredeney);
 
         var (solarSeed, windSeed) = WeatherSeeds.Split(4242);
@@ -162,7 +162,7 @@ public class GameUseCaseTests
         if (SolarCsv is null)
             return;
 
-        var solar = SyntheticSolarProvider.FromDwdRecord(SolarCsv, DwdStations.Bochum);
+        var solar = SyntheticSolarProvider.FromDwdRecord(SolarCsv, DwdSolarStations.Bochum);
 
         // Köln, ~50 km south: same cloud climate, different geometry.
         var koeln = new SolarSite(50.9375, 6.9603, 55.0);
