@@ -1,6 +1,7 @@
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
 using WeatherSynth.Solar;
+using WeatherSynth.Statistics;
 
 namespace WeatherSynth.Sample;
 
@@ -74,7 +75,7 @@ internal static class IndexFitReport
             var values = group.Select(d => d.ClearSkyIndex).ToList();
             double ks = KolmogorovSmirnov(values, model.ForMonth(group.Key));
 
-            double critical = Climate.GoodnessOfFit.CriticalValueFivePercent(
+            double critical = Statistics.GoodnessOfFit.CriticalValueFivePercent(
                 values.Count
             );
             if (ks > critical)
@@ -260,7 +261,7 @@ internal static class IndexFitReport
     /// lives in Core, since the Weibull fit needs the same one against a different CDF.
     /// </summary>
     private static double KolmogorovSmirnov(List<double> values, ScaledBeta fit) =>
-        Climate.GoodnessOfFit.KolmogorovSmirnovDistance(
+        Statistics.GoodnessOfFit.KolmogorovSmirnovDistance(
             values,
             fit.CumulativeProbability
         );

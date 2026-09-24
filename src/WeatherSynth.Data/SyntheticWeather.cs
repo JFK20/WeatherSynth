@@ -1,5 +1,6 @@
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
+using WeatherSynth.Statistics;
 using WeatherSynth.Wind;
 
 namespace WeatherSynth;

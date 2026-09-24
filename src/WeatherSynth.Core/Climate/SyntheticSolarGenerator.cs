@@ -1,164 +1,163 @@
 using WeatherSynth.Solar;
 
-namespace WeatherSynth.Climate
+namespace WeatherSynth.Climate;
+
+/// <summary>
+/// Produces synthetic daily irradiation: draws a clear-sky index from the fitted
+/// distribution and multiplies it by the deterministic ceiling for that date and place.
+///
+/// <para>This is the join between the two halves of the model, and the reason the whole
+/// thing is built on an index rather than on irradiance. The distribution knows nothing
+/// about latitude or season; the ceiling knows nothing about weather. Neither could produce
+/// a plausible day alone.</para>
+///
+/// <para><b>Fit at one site, apply at another.</b> The index divides out geometry, so a
+/// distribution fitted at Bochum transfers to any site sharing its cloud climate. The
+/// ceiling passed here must be built with the <i>target</i> site's coordinates - that is
+/// what puts the geometry back.</para>
+///
+/// <para><b>Order-dependent.</b> The index carries day-to-day persistence
+/// (<see cref="LatentAr1Chain"/>), so <see cref="GenerateDay"/> depends on the call
+/// before it. Walk dates forwards, and call <see cref="Reset"/> between independent runs.
+/// <see cref="Generate"/> resets for you.</para>
+///
+/// <para><b>Not thread-safe.</b> The underlying solar position calculator memoises per-date
+/// terms, and the persistence chain carries state. One generator per thread.</para>
+/// </summary>
+internal sealed class SyntheticSolarGenerator
 {
+    private readonly LatentAr1Chain _chain;
+    private readonly DailyClearSkyCalculator _ceiling;
+
+    /// <param name="model">Fitted index distribution, from a measured record.</param>
+    /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
+    public SyntheticSolarGenerator(ClearSkyIndexModel model, DailyClearSkyCalculator ceiling)
+        : this(new LatentAr1Chain(model), ceiling) { }
+
     /// <summary>
-    /// Produces synthetic daily irradiation: draws a clear-sky index from the fitted
-    /// distribution and multiplies it by the deterministic ceiling for that date and place.
-    ///
-    /// <para>This is the join between the two halves of the model, and the reason the whole
-    /// thing is built on an index rather than on irradiance. The distribution knows nothing
-    /// about latitude or season; the ceiling knows nothing about weather. Neither could produce
-    /// a plausible day alone.</para>
-    ///
-    /// <para><b>Fit at one site, apply at another.</b> The index divides out geometry, so a
-    /// distribution fitted at Bochum transfers to any site sharing its cloud climate. The
-    /// ceiling passed here must be built with the <i>target</i> site's coordinates - that is
-    /// what puts the geometry back.</para>
-    ///
-    /// <para><b>Order-dependent.</b> The index carries day-to-day persistence
-    /// (<see cref="LatentAr1Chain"/>), so <see cref="GenerateDay"/> depends on the call
-    /// before it. Walk dates forwards, and call <see cref="Reset"/> between independent runs.
-    /// <see cref="Generate"/> resets for you.</para>
-    ///
-    /// <para><b>Not thread-safe.</b> The underlying solar position calculator memoises per-date
-    /// terms, and the persistence chain carries state. One generator per thread.</para>
+    /// Takes the index source directly, for callers that want something other than the fitted
+    /// persistence - a chain at phi 0 is the independent-sampling baseline the reports
+    /// compare against.
     /// </summary>
-    internal sealed class SyntheticSolarGenerator
+    /// <param name="chain">Source of clear-sky indices. This generator owns its state.</param>
+    /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
+    public SyntheticSolarGenerator(LatentAr1Chain chain, DailyClearSkyCalculator ceiling)
     {
-        private readonly LatentAr1Chain _chain;
-        private readonly DailyClearSkyCalculator _ceiling;
+        _chain = chain ?? throw new ArgumentNullException(nameof(chain));
+        _ceiling = ceiling ?? throw new ArgumentNullException(nameof(ceiling));
+    }
 
-        /// <param name="model">Fitted index distribution, from a measured record.</param>
-        /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
-        public SyntheticSolarGenerator(ClearSkyIndexModel model, DailyClearSkyCalculator ceiling)
-            : this(new LatentAr1Chain(model), ceiling) { }
+    /// <summary>Starts a fresh run, forgetting the previous day's weather.</summary>
+    public void Reset() => _chain.Reset();
 
-        /// <summary>
-        /// Takes the index source directly, for callers that want something other than the fitted
-        /// persistence - a chain at phi 0 is the independent-sampling baseline the reports
-        /// compare against.
-        /// </summary>
-        /// <param name="chain">Source of clear-sky indices. This generator owns its state.</param>
-        /// <param name="ceiling">Clear-sky calculator built for the site being generated for.</param>
-        public SyntheticSolarGenerator(LatentAr1Chain chain, DailyClearSkyCalculator ceiling)
-        {
-            _chain = chain ?? throw new ArgumentNullException(nameof(chain));
-            _ceiling = ceiling ?? throw new ArgumentNullException(nameof(ceiling));
-        }
+    /// <summary>
+    /// Generates one synthetic day, continuing on from the day generated before it.
+    ///
+    /// <para>No clamping is applied. The pipeline in knowledge.md §2 calls for a final clamp
+    /// to [0, clear-sky] as a safety net, but the Beta's support already bounds the draw to
+    /// [0, 1.25] structurally, and clamping at 1.0 would delete the days that genuinely beat
+    /// a monthly-mean ceiling - which are real, and are the tail worth reproducing.</para>
+    /// </summary>
+    public SyntheticSolarDay GenerateDay(DateOnly date, Random random)
+    {
+        if (random is null)
+            throw new ArgumentNullException(nameof(random));
 
-        /// <summary>Starts a fresh run, forgetting the previous day's weather.</summary>
-        public void Reset() => _chain.Reset();
+        return DayFromIndex(date, _chain.Next(date, random));
+    }
 
-        /// <summary>
-        /// Generates one synthetic day, continuing on from the day generated before it.
-        ///
-        /// <para>No clamping is applied. The pipeline in knowledge.md §2 calls for a final clamp
-        /// to [0, clear-sky] as a safety net, but the Beta's support already bounds the draw to
-        /// [0, 1.25] structurally, and clamping at 1.0 would delete the days that genuinely beat
-        /// a monthly-mean ceiling - which are real, and are the tail worth reproducing.</para>
-        /// </summary>
-        public SyntheticSolarDay GenerateDay(DateOnly date, Random random)
-        {
-            if (random is null)
-                throw new ArgumentNullException(nameof(random));
+    /// <summary>
+    /// Builds the day for an index that has already been drawn, rather than drawing one.
+    ///
+    /// <para>The seam for <see cref="CoupledLatentAr1Chain"/>, which draws the index jointly
+    /// with a wind speed and so cannot go through <see cref="GenerateDay"/>. It exists so that
+    /// the ceiling integration keeps exactly one definition: a coupled generator that
+    /// multiplied by its own ceiling would be a second place for the 15-minute step and the
+    /// site's coordinates to disagree, which is the one error in this pipeline that leaves no
+    /// trace in the numbers.</para>
+    ///
+    /// <para>Stateless, and it does not advance the persistence chain - the caller owns the
+    /// ordering.</para>
+    /// </summary>
+    /// <param name="date">The day, which selects the ceiling.</param>
+    /// <param name="index">A clear-sky index drawn elsewhere.</param>
+    public SyntheticSolarDay DayFromIndex(DateOnly date, double index)
+    {
+        double clearSky = _ceiling.ForDate(date.ToDateTime(TimeOnly.MinValue)).GhiWhPerM2;
 
-            return DayFromIndex(date, _chain.Next(date, random));
-        }
+        return new SyntheticSolarDay(date, index, clearSky, index * clearSky);
+    }
 
-        /// <summary>
-        /// Builds the day for an index that has already been drawn, rather than drawing one.
-        ///
-        /// <para>The seam for <see cref="CoupledLatentAr1Chain"/>, which draws the index jointly
-        /// with a wind speed and so cannot go through <see cref="GenerateDay"/>. It exists so that
-        /// the ceiling integration keeps exactly one definition: a coupled generator that
-        /// multiplied by its own ceiling would be a second place for the 15-minute step and the
-        /// site's coordinates to disagree, which is the one error in this pipeline that leaves no
-        /// trace in the numbers.</para>
-        ///
-        /// <para>Stateless, and it does not advance the persistence chain - the caller owns the
-        /// ordering.</para>
-        /// </summary>
-        /// <param name="date">The day, which selects the ceiling.</param>
-        /// <param name="index">A clear-sky index drawn elsewhere.</param>
-        public SyntheticSolarDay DayFromIndex(DateOnly date, double index)
-        {
-            double clearSky = _ceiling.ForDate(date.ToDateTime(TimeOnly.MinValue)).GhiWhPerM2;
+    /// <summary>
+    /// Generates a continuous run of days, inclusive of both ends.
+    ///
+    /// <para>Streams, so a long run does not materialise in memory at once. Each day costs
+    /// one clear-sky integration, which dominates the sampling by a wide margin.</para>
+    ///
+    /// <para>The persistence chain is reset when enumeration begins, so a run depends only on
+    /// the seed it was given and not on whatever this generator produced before.</para>
+    /// </summary>
+    public IEnumerable<SyntheticSolarDay> Generate(
+        DateOnly start,
+        DateOnly endInclusive,
+        Random random
+    )
+    {
+        if (random is null)
+            throw new ArgumentNullException(nameof(random));
+        if (endInclusive < start)
+            throw new ArgumentException("End must not precede start.", nameof(endInclusive));
 
-            return new SyntheticSolarDay(date, index, clearSky, index * clearSky);
-        }
+        // Outside the iterator, so both the argument checks and the reset happen when Generate
+        // is called rather than on the first MoveNext. Otherwise two enumerables taken from one
+        // generator would silently share a chain until whichever was enumerated first.
+        Reset();
 
-        /// <summary>
-        /// Generates a continuous run of days, inclusive of both ends.
-        ///
-        /// <para>Streams, so a long run does not materialise in memory at once. Each day costs
-        /// one clear-sky integration, which dominates the sampling by a wide margin.</para>
-        ///
-        /// <para>The persistence chain is reset when enumeration begins, so a run depends only on
-        /// the seed it was given and not on whatever this generator produced before.</para>
-        /// </summary>
-        public IEnumerable<SyntheticSolarDay> Generate(
-            DateOnly start,
-            DateOnly endInclusive,
-            Random random
-        )
-        {
-            if (random is null)
-                throw new ArgumentNullException(nameof(random));
-            if (endInclusive < start)
-                throw new ArgumentException("End must not precede start.", nameof(endInclusive));
+        return Iterate(start, endInclusive, random);
+    }
 
-            // Outside the iterator, so both the argument checks and the reset happen when Generate
-            // is called rather than on the first MoveNext. Otherwise two enumerables taken from one
-            // generator would silently share a chain until whichever was enumerated first.
-            Reset();
+    /// <summary>
+    /// Generates one calendar year at daily resolution, 1 January to 31 December inclusive.
+    ///
+    /// <para>366 days in a leap year, and that is deliberate rather than an accident of
+    /// <see cref="DateOnly"/> arithmetic: 29 February is a real day with a real ceiling, and
+    /// dropping it would put a one-day hole in the persistence chain for no gain.</para>
+    ///
+    /// <para>The year is a label on the seasonal cycle, not a claim about that particular
+    /// year. Two runs over different years with the same seed differ only in their ceilings -
+    /// the weather is drawn fresh either way. Same contract as
+    /// <see cref="Generate"/>: streaming, and reset before the first day.</para>
+    /// </summary>
+    /// <param name="year">Calendar year to generate.</param>
+    /// <param name="random">Source of randomness; seed it to make a run reproducible.</param>
+    public IEnumerable<SyntheticSolarDay> GenerateYear(int year, Random random) =>
+        Generate(new DateOnly(year, 1, 1), new DateOnly(year, 12, 31), random);
 
-            return Iterate(start, endInclusive, random);
-        }
+    /// <summary>
+    /// Generates a whole year from a seed, with its monthly and annual totals - the shape a
+    /// caller asking "give me a plausible year for this site" actually wants.
+    ///
+    /// <para>The seed is the argument rather than a <see cref="Random"/> because it travels:
+    /// it is carried on the result, so the same year can be re-requested later and come back
+    /// identical. Passing a shared <see cref="Random"/> could not promise that.</para>
+    /// </summary>
+    /// <param name="year">Calendar year to generate.</param>
+    /// <param name="seed">Seed for the run. The same seed and site reproduce it exactly.</param>
+    public SyntheticSolarYear GenerateYear(int year, int seed)
+    {
+        var days = new List<SyntheticSolarDay>(366);
+        days.AddRange(GenerateYear(year, new Random(seed)));
 
-        /// <summary>
-        /// Generates one calendar year at daily resolution, 1 January to 31 December inclusive.
-        ///
-        /// <para>366 days in a leap year, and that is deliberate rather than an accident of
-        /// <see cref="DateOnly"/> arithmetic: 29 February is a real day with a real ceiling, and
-        /// dropping it would put a one-day hole in the persistence chain for no gain.</para>
-        ///
-        /// <para>The year is a label on the seasonal cycle, not a claim about that particular
-        /// year. Two runs over different years with the same seed differ only in their ceilings -
-        /// the weather is drawn fresh either way. Same contract as
-        /// <see cref="Generate"/>: streaming, and reset before the first day.</para>
-        /// </summary>
-        /// <param name="year">Calendar year to generate.</param>
-        /// <param name="random">Source of randomness; seed it to make a run reproducible.</param>
-        public IEnumerable<SyntheticSolarDay> GenerateYear(int year, Random random) =>
-            Generate(new DateOnly(year, 1, 1), new DateOnly(year, 12, 31), random);
+        return new SyntheticSolarYear(year, seed, days);
+    }
 
-        /// <summary>
-        /// Generates a whole year from a seed, with its monthly and annual totals - the shape a
-        /// caller asking "give me a plausible year for this site" actually wants.
-        ///
-        /// <para>The seed is the argument rather than a <see cref="Random"/> because it travels:
-        /// it is carried on the result, so the same year can be re-requested later and come back
-        /// identical. Passing a shared <see cref="Random"/> could not promise that.</para>
-        /// </summary>
-        /// <param name="year">Calendar year to generate.</param>
-        /// <param name="seed">Seed for the run. The same seed and site reproduce it exactly.</param>
-        public SyntheticSolarYear GenerateYear(int year, int seed)
-        {
-            var days = new List<SyntheticSolarDay>(366);
-            days.AddRange(GenerateYear(year, new Random(seed)));
-
-            return new SyntheticSolarYear(year, seed, days);
-        }
-
-        private IEnumerable<SyntheticSolarDay> Iterate(
-            DateOnly start,
-            DateOnly endInclusive,
-            Random random
-        )
-        {
-            for (var date = start; date <= endInclusive; date = date.AddDays(1))
-                yield return GenerateDay(date, random);
-        }
+    private IEnumerable<SyntheticSolarDay> Iterate(
+        DateOnly start,
+        DateOnly endInclusive,
+        Random random
+    )
+    {
+        for (var date = start; date <= endInclusive; date = date.AddDays(1))
+            yield return GenerateDay(date, random);
     }
 }

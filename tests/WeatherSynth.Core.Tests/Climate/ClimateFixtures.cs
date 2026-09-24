@@ -1,4 +1,5 @@
 using WeatherSynth.Climate;
+using WeatherSynth.Statistics;
 
 namespace WeatherSynth.Core.Tests;
 
