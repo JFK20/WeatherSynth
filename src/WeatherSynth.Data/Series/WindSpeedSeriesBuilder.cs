@@ -44,4 +44,53 @@ internal static class WindSpeedSeriesBuilder
 
         return series;
     }
+
+    /// <summary>
+    /// The same days' hours, for <see cref="Wind.HourlyWindModel.Fit"/>: the month and the 24
+    /// speeds indexed by UTC hour.
+    ///
+    /// <para>The same admission rule as <see cref="Build"/> - complete days with a positive mean -
+    /// so the hourly model is measured on exactly the days the daily one was. A day whose hours do
+    /// not cover 00-23 UTC once each is dropped rather than guessed at.</para>
+    /// </summary>
+    /// <param name="days">Station days, unfiltered.</param>
+    public static IReadOnlyList<(int Month, IReadOnlyList<double> SpeedsByUtcHour)> BuildHourly(
+        IEnumerable<DwdWindDay> days
+    )
+    {
+        ArgumentNullException.ThrowIfNull(days);
+
+        var series = new List<(int, IReadOnlyList<double>)>();
+
+        foreach (var day in days)
+        {
+            if (!day.IsComplete || !(day.MeanSpeed > 0.0))
+                continue;
+
+            var speeds = new double[24];
+            var seen = new bool[24];
+            bool valid = true;
+
+            foreach (var hour in day.Hours)
+            {
+                if (hour.SpeedMetersPerSecond is not { } speed)
+                    continue;
+
+                int utcHour = hour.TimestampUtc.UtcDateTime.Hour;
+                if (seen[utcHour])
+                {
+                    valid = false;
+                    break;
+                }
+
+                seen[utcHour] = true;
+                speeds[utcHour] = speed;
+            }
+
+            if (valid && Array.TrueForAll(seen, s => s))
+                series.Add((day.Date.Month, speeds));
+        }
+
+        return series;
+    }
 }

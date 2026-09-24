@@ -28,8 +28,46 @@ public readonly record struct SyntheticSolarMonth(
 /// </summary>
 public sealed class SyntheticSolarYear
 {
+    private readonly HourGrid? _grid;
+    private readonly double[]? _clearSkyByHour;
+
     /// <summary>
-    /// Wraps an already-generated run of days.
+    /// Wraps an already-generated run of days and their hours.
+    /// </summary>
+    /// <param name="year">The calendar year the days belong to.</param>
+    /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
+    /// <param name="days">The generated days, in date order.</param>
+    /// <param name="grid">Where each day's hours sit in time.</param>
+    /// <param name="clearSkyByHour">
+    /// The clear-sky ceiling of every hour, Wh/m², <see cref="HourGrid.HoursPerDay"/> per day in
+    /// day order. The hour's irradiation is its day's index times this.
+    /// </param>
+    internal SyntheticSolarYear(
+        int year,
+        int seed,
+        IReadOnlyList<SyntheticSolarDay> days,
+        HourGrid grid,
+        double[] clearSkyByHour
+    )
+        : this(year, seed, days)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+        ArgumentNullException.ThrowIfNull(clearSkyByHour);
+
+        if (grid.DayCount != days.Count || clearSkyByHour.Length != grid.Count)
+            throw new ArgumentException(
+                $"{days.Count} days need {days.Count * HourGrid.HoursPerDay} hours; got "
+                    + $"{clearSkyByHour.Length} over {grid.DayCount} days.",
+                nameof(clearSkyByHour)
+            );
+
+        _grid = grid;
+        _clearSkyByHour = clearSkyByHour;
+    }
+
+    /// <summary>
+    /// Wraps an already-generated run of days, without hours. Internal callers only: every
+    /// public path builds a year with hours.
     /// </summary>
     /// <param name="year">The calendar year the days belong to.</param>
     /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
@@ -124,4 +162,55 @@ public sealed class SyntheticSolarYear
     /// <summary>Energy-weighted index: the fraction of the year's available energy delivered.</summary>
     public double ClearSkyFraction =>
         ClearSkyKWhPerM2 > 0.0 ? GhiKWhPerM2 / ClearSkyKWhPerM2 : double.NaN;
+
+    /// <summary>
+    /// Every generated hour, in order: twenty-four per day, 8,784 in a leap year. Each day's hours
+    /// add up to that day's <see cref="SyntheticSolarDay.GhiWhPerM2"/>.
+    ///
+    /// <para>Computed with the year and stored compactly; the records themselves are built as they
+    /// are read, so holding many years in a cache costs one number per hour, not one record.</para>
+    /// </summary>
+    public IReadOnlyList<SyntheticSolarHour> Hours => new HourView<SyntheticSolarHour>(Grid.Count, HourAt);
+
+    /// <summary>
+    /// The hours starting in <c>[startInclusive, endExclusive)</c>: 06:00 to 12:00 is six hours,
+    /// 06:00 to 11:00 inclusive of their starts, which together cover exactly that interval.
+    ///
+    /// <para>Clamped to this year, so a range reaching into the next one returns this year's part
+    /// of it, and a range outside the year returns nothing.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The end is before the start.</exception>
+    public IReadOnlyList<SyntheticSolarHour> HoursBetween(
+        DateTimeOffset startInclusive,
+        DateTimeOffset endExclusive
+    ) => Grid.IndicesBetween(startInclusive, endExclusive).ConvertAll(HourAt);
+
+    /// <summary>
+    /// <see cref="HoursBetween(DateTimeOffset, DateTimeOffset)"/> for <see cref="DateTime"/>s.
+    ///
+    /// <para>An unspecified <see cref="DateTime.Kind"/> is read as wall-clock time in the site's
+    /// time zone - UTC for the default site - rather than through the machine's local zone, which
+    /// is what the implicit conversion to <see cref="DateTimeOffset"/> would silently do.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The end is before the start.</exception>
+    public IReadOnlyList<SyntheticSolarHour> HoursBetween(
+        DateTime startInclusive,
+        DateTime endExclusive
+    ) => HoursBetween(Grid.ToInstant(startInclusive), Grid.ToInstant(endExclusive));
+
+    internal HourGrid Grid =>
+        _grid ?? throw new InvalidOperationException("This year was generated without hours.");
+
+    internal SyntheticSolarHour HourAt(int index)
+    {
+        var day = Days[index / HourGrid.HoursPerDay];
+        double clearSky = _clearSkyByHour![index];
+
+        return new SyntheticSolarHour(
+            Grid.StartOf(index),
+            day.ClearSkyIndex,
+            clearSky,
+            day.ClearSkyIndex * clearSky
+        );
+    }
 }

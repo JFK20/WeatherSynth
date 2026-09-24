@@ -21,13 +21,6 @@ dotnet add package WeatherSynth
 
 That pulls in `WeatherSynth.Core` (the physics) automatically
 
-**Upgrading from 0.1:** three public types were renamed. Generated output is unchanged.
-
-| 0.1 | 0.2 |
-|---|---|
-| `DwdStation` / `DwdStations` | `DwdSolarStation` / `DwdSolarStations` |
-| `DwdTurbines` | `ReferenceTurbines` |
-
 ## Quick start
 
 No files, no fitting: `SyntheticWeather.Default` bundles a model already fitted from the Bochum
@@ -45,6 +38,40 @@ foreach (var day in year.Days)
 `SyntheticWeather.DefaultSolar` and `.DefaultWind` give you just one resource each, if you don't
 need both. Everything below this point covers fitting from your own DWD station record instead of
 the bundled one.
+
+## Hourly values
+
+Every year from `GenerateYear` also carries its hours, 24 per day. They are computed together
+with the days and read back by time range:
+
+```csharp
+var year = SyntheticWeather.Default.GenerateYear(2025, seed: 4242);
+
+// The hours *starting* in [06:00, 12:00): six hours, 06:00 to 11:00, covering exactly that span.
+foreach (var hour in year.HoursBetween(new DateTime(2025, 1, 1, 6, 0, 0), new DateTime(2025, 1, 1, 12, 0, 0)))
+    Console.WriteLine($"{hour.Start:HH:mm} {hour.Solar.GhiWhPerM2:F0} Wh/m²  {hour.Wind.Speed:F1} m/s");
+
+IReadOnlyList<CoupledWeatherHour> all = year.Hours; // 8,760 (8,784 in a leap year)
+```
+
+A `DateTime` without a kind is read in the site's time zone, which is UTC for the default site, not
+in the server's local zone. The range is clamped to the year, so a span across New Year needs both
+years. `SyntheticSolarYear` and `SyntheticWindYear` have the same `Hours` and `HoursBetween`.
+
+**The daily values do not change.** The hours come from a random stream of their own, so a year
+with hours has exactly the days it had before.
+
+- **Solar:** each hour is the day's clear-sky index times that hour's clear-sky ceiling. The shape
+  over the day and the daily total are right: the 24 hours add up exactly to the day. There are no
+  passing clouds, because every hour of a day has the same cloudiness.
+- **Wind:** the hours average exactly to the day's `MeanSpeed`. Their spread comes from the same
+  within-day distribution the turbine yield uses, so the mean of the cubed hourly speeds carries the
+  day's energy. The hours are ordered by a diurnal cycle fitted per month (windier afternoons,
+  strongest in summer) and an hour-to-hour persistence, both fitted from the Essen hourly record.
+  Each day is pinned to its own mean, so there can be a step at midnight.
+
+A year's hours are stored as one number per hour and resource, about 140 KB per year. The hour
+records are built only when you read them.
 
 ## Usage
 

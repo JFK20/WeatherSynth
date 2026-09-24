@@ -106,6 +106,9 @@ public class DefaultModelTests
 
         // The whole pairing, which is the half the coupling coefficients are responsible for.
         fromCoefficients.Days.Should().Equal(fromRecord.Days);
+
+        // And every hour, which is what the diurnal and persistence coefficients are for.
+        fromCoefficients.Hours.Should().Equal(fromRecord.Hours);
     }
 
     /// <summary>

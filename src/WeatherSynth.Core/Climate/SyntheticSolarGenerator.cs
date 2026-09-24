@@ -80,12 +80,39 @@ internal sealed class SyntheticSolarGenerator
     /// </summary>
     /// <param name="date">The day, which selects the ceiling.</param>
     /// <param name="index">A clear-sky index drawn elsewhere.</param>
-    public SyntheticSolarDay DayFromIndex(DateOnly date, double index)
+    public SyntheticSolarDay DayFromIndex(DateOnly date, double index) =>
+        DayFromIndex(date, index, Span<double>.Empty);
+
+    /// <summary>
+    /// <see cref="DayFromIndex(DateOnly, double)"/>, also writing the day's twenty-four hourly
+    /// clear-sky ceilings from the same integration.
+    ///
+    /// <para>The hours carry the day's index unchanged - an hour's irradiation is the index times
+    /// its slot here - so they add up to the day's total without a second draw or a second
+    /// ceiling.</para>
+    /// </summary>
+    /// <param name="date">The day, which selects the ceiling.</param>
+    /// <param name="index">A clear-sky index drawn elsewhere.</param>
+    /// <param name="hourlyClearSkyWhPerM2">Twenty-four slots for the hourly ceilings, or empty.</param>
+    public SyntheticSolarDay DayFromIndex(
+        DateOnly date,
+        double index,
+        Span<double> hourlyClearSkyWhPerM2
+    )
     {
-        double clearSky = _ceiling.ForDate(date.ToDateTime(TimeOnly.MinValue)).GhiWhPerM2;
+        double clearSky = _ceiling
+            .ForDate(date.ToDateTime(TimeOnly.MinValue), hourlyClearSkyWhPerM2)
+            .GhiWhPerM2;
 
         return new SyntheticSolarDay(date, index, clearSky, index * clearSky);
     }
+
+    /// <summary>The instant <paramref name="date"/> begins at this generator's site.</summary>
+    public DateTimeOffset DayStart(DateOnly date) =>
+        _ceiling.DayStart(date.ToDateTime(TimeOnly.MinValue));
+
+    /// <summary>The zone this generator's days are bounded in.</summary>
+    public TimeZoneInfo TimeZone => _ceiling.TimeZone;
 
     /// <summary>
     /// Generates a continuous run of days, inclusive of both ends.
@@ -145,9 +172,31 @@ internal sealed class SyntheticSolarGenerator
     /// <param name="seed">Seed for the run. The same seed and site reproduce it exactly.</param>
     public SyntheticSolarYear GenerateYear(int year, int seed)
     {
-        var days = new List<SyntheticSolarDay>(366);
-        days.AddRange(GenerateYear(year, new Random(seed)));
+        var (start, endInclusive) = DailyRun.Year(year);
+        var random = new Random(seed);
 
-        return new SyntheticSolarYear(year, seed, days);
+        var days = new List<SyntheticSolarDay>(366);
+        var dayStarts = new List<DateTimeOffset>(366);
+        var clearSkyByHour = new double[(endInclusive.DayNumber - start.DayNumber + 1) * HourGrid.HoursPerDay];
+
+        // The same draws in the same order as GenerateYear(int, Random): the hours come out of
+        // the ceiling integration the day needs anyway, and consume no randomness.
+        Reset();
+
+        foreach (var date in DailyRun.Days(start, endInclusive))
+        {
+            var hours = clearSkyByHour.AsSpan(days.Count * HourGrid.HoursPerDay, HourGrid.HoursPerDay);
+
+            days.Add(DayFromIndex(date, _chain.Next(date, random), hours));
+            dayStarts.Add(DayStart(date));
+        }
+
+        return new SyntheticSolarYear(
+            year,
+            seed,
+            days,
+            new HourGrid(dayStarts, TimeZone),
+            clearSkyByHour
+        );
     }
 }

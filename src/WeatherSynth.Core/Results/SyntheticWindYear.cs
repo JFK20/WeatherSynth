@@ -31,8 +31,47 @@ public readonly record struct SyntheticWindMonth(
 /// </summary>
 public sealed class SyntheticWindYear
 {
+    private readonly HourGrid? _grid;
+    private readonly double[]? _speedByHour;
+
     /// <summary>
-    /// Wraps an already-generated run of days.
+    /// Wraps an already-generated run of days and their hours.
+    /// </summary>
+    /// <param name="year">The calendar year the days belong to.</param>
+    /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
+    /// <param name="days">The generated days, in date order.</param>
+    /// <param name="grid">Where each day's hours sit in time.</param>
+    /// <param name="speedByHour">
+    /// Every hour's mean speed at the target site, m/s, <see cref="HourGrid.HoursPerDay"/> per day
+    /// in day order. The speed at the fitting height is recovered through the day's own ratio,
+    /// so the transfer keeps a single definition.
+    /// </param>
+    internal SyntheticWindYear(
+        int year,
+        int seed,
+        IReadOnlyList<SyntheticWindDay> days,
+        HourGrid grid,
+        double[] speedByHour
+    )
+        : this(year, seed, days)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+        ArgumentNullException.ThrowIfNull(speedByHour);
+
+        if (grid.DayCount != days.Count || speedByHour.Length != grid.Count)
+            throw new ArgumentException(
+                $"{days.Count} days need {days.Count * HourGrid.HoursPerDay} hours; got "
+                    + $"{speedByHour.Length} over {grid.DayCount} days.",
+                nameof(speedByHour)
+            );
+
+        _grid = grid;
+        _speedByHour = speedByHour;
+    }
+
+    /// <summary>
+    /// Wraps an already-generated run of days, without hours. Internal callers only: every
+    /// public path builds a year with hours.
     /// </summary>
     /// <param name="year">The calendar year the days belong to.</param>
     /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
@@ -139,4 +178,55 @@ public sealed class SyntheticWindYear
     /// </summary>
     public double EnergyPatternFactor =>
         MeanSpeed > 0.0 ? MeanCubedSpeed / (MeanSpeed * MeanSpeed * MeanSpeed) : double.NaN;
+
+    /// <summary>
+    /// Every generated hour, in order: twenty-four per day, 8,784 in a leap year. Each day's hours
+    /// average exactly to that day's <see cref="SyntheticWindDay.MeanSpeed"/>.
+    ///
+    /// <para>Computed with the year and stored compactly; the records themselves are built as they
+    /// are read, so holding many years in a cache costs one number per hour, not one record.</para>
+    /// </summary>
+    public IReadOnlyList<SyntheticWindHour> Hours => new HourView<SyntheticWindHour>(Grid.Count, HourAt);
+
+    /// <summary>
+    /// The hours starting in <c>[startInclusive, endExclusive)</c>: 06:00 to 12:00 is six hours,
+    /// 06:00 to 11:00 inclusive of their starts, which together cover exactly that interval.
+    ///
+    /// <para>Clamped to this year, so a range reaching into the next one returns this year's part
+    /// of it, and a range outside the year returns nothing.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The end is before the start.</exception>
+    public IReadOnlyList<SyntheticWindHour> HoursBetween(
+        DateTimeOffset startInclusive,
+        DateTimeOffset endExclusive
+    ) => Grid.IndicesBetween(startInclusive, endExclusive).ConvertAll(HourAt);
+
+    /// <summary>
+    /// <see cref="HoursBetween(DateTimeOffset, DateTimeOffset)"/> for <see cref="DateTime"/>s.
+    ///
+    /// <para>An unspecified <see cref="DateTime.Kind"/> is read as wall-clock time in the year's
+    /// time zone - UTC unless the year was generated alongside a solar site in another zone -
+    /// rather than through the machine's local zone, which is what the implicit conversion to
+    /// <see cref="DateTimeOffset"/> would silently do.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The end is before the start.</exception>
+    public IReadOnlyList<SyntheticWindHour> HoursBetween(
+        DateTime startInclusive,
+        DateTime endExclusive
+    ) => HoursBetween(Grid.ToInstant(startInclusive), Grid.ToInstant(endExclusive));
+
+    internal HourGrid Grid =>
+        _grid ?? throw new InvalidOperationException("This year was generated without hours.");
+
+    internal SyntheticWindHour HourAt(int index)
+    {
+        var day = Days[index / HourGrid.HoursPerDay];
+        double speed = _speedByHour![index];
+
+        // The transfer is one constant per site, so the day's own ratio undoes it exactly.
+        double atReference =
+            day.MeanSpeed > 0.0 ? speed * (day.MeanSpeedAtReference / day.MeanSpeed) : day.MeanSpeedAtReference;
+
+        return new SyntheticWindHour(Grid.StartOf(index), atReference, speed);
+    }
 }

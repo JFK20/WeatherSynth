@@ -221,22 +221,33 @@ internal sealed class DailyClearSkyCalculator
     /// Integrates clear-sky irradiance across a whole calendar day.
     /// This is the physical ceiling.
     /// </summary>
-    public DailyClearSky ForDate(DateTime date)
-    {
-        var day = date.Date;
+    public DailyClearSky ForDate(DateTime date) => ForDate(date, Span<double>.Empty);
 
-        // Resolve the UTC offset once from noon, which avoids picking up the wrong
-        // offset on DST transition days (midnight and noon can differ).
-        TimeSpan utcOffset = _timeZone.GetUtcOffset(
-            DateTime.SpecifyKind(day.AddHours(12), DateTimeKind.Unspecified)
-        );
+    /// <summary>
+    /// <see cref="ForDate(DateTime)"/>, also splitting the day's clear-sky GHI into its
+    /// twenty-four hours from the same samples.
+    ///
+    /// <para>One integration, two resolutions: each sample lands in the hour its midpoint falls
+    /// in, so the hours add up to <see cref="DailyClearSky.GhiWhPerM2"/> by construction - and the
+    /// daily figure is summed exactly as before, so asking for hours changes no day.</para>
+    /// </summary>
+    /// <param name="date">The day.</param>
+    /// <param name="hourlyGhiWhPerM2">
+    /// Twenty-four slots, overwritten with each hour's clear-sky Wh/m², or empty for none.
+    /// </param>
+    public DailyClearSky ForDate(DateTime date, Span<double> hourlyGhiWhPerM2)
+    {
+        if (!hourlyGhiWhPerM2.IsEmpty && hourlyGhiWhPerM2.Length != 24)
+            throw new ArgumentException("Hourly output needs 24 slots.", nameof(hourlyGhiWhPerM2));
+
+        hourlyGhiWhPerM2.Clear();
 
         var samples = new List<ClearSkySample>();
         double ghiWh = 0.0;
         double dhiWh = 0.0;
         double peakGhi = 0.0;
 
-        var dayStart = new DateTimeOffset(day, utcOffset);
+        var dayStart = DayStart(date);
 
         foreach (var (sample, hours) in Walk(dayStart, dayStart.AddDays(1)))
         {
@@ -244,12 +255,38 @@ internal sealed class DailyClearSkyCalculator
             ghiWh += sample.Irradiance.Ghi * hours;
             dhiWh += sample.Irradiance.Dhi * hours;
 
+            if (!hourlyGhiWhPerM2.IsEmpty)
+                hourlyGhiWhPerM2[(int)(sample.LocalTime - dayStart).TotalHours] +=
+                    sample.Irradiance.Ghi * hours;
+
             if (sample.Irradiance.Ghi > peakGhi)
                 peakGhi = sample.Irradiance.Ghi;
         }
 
         return new DailyClearSky(ghiWh, dhiWh, peakGhi, samples);
     }
+
+    /// <summary>
+    /// The instant a calendar day begins at this site: local midnight, at the UTC offset in force
+    /// at noon.
+    ///
+    /// <para>Resolving the offset from noon avoids picking up the wrong one on DST transition
+    /// days, where midnight and noon can differ. The price is that those two days overlap or miss
+    /// an hour against their neighbours.</para>
+    /// </summary>
+    public DateTimeOffset DayStart(DateTime date)
+    {
+        var day = date.Date;
+
+        TimeSpan utcOffset = _timeZone.GetUtcOffset(
+            DateTime.SpecifyKind(day.AddHours(12), DateTimeKind.Unspecified)
+        );
+
+        return new DateTimeOffset(day, utcOffset);
+    }
+
+    /// <summary>The zone this calculator's days are bounded in.</summary>
+    public TimeZoneInfo TimeZone => _timeZone;
 
     /// <summary>
     /// Integrates clear-sky GHI over an arbitrary interval, in Wh/m².

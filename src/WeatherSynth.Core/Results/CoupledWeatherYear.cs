@@ -10,6 +10,16 @@ public readonly record struct CoupledWeatherDay(
     SyntheticWindDay Wind
 );
 
+/// <summary>One generated hour of both resources, at the same instant.</summary>
+/// <param name="Start">When the hour begins. It covers <c>[Start, Start + 1 h)</c>.</param>
+/// <param name="Solar">The solar half: the day's index spread over this hour's clear-sky share.</param>
+/// <param name="Wind">The wind half: the hour's mean speed at the fitting height and at the target.</param>
+public readonly record struct CoupledWeatherHour(
+    DateTimeOffset Start,
+    SyntheticSolarHour Solar,
+    SyntheticWindHour Wind
+);
+
 /// <summary>
 /// One generated year of both resources, drawn together so that the two are jointly plausible
 /// and not merely plausible one at a time.
@@ -36,7 +46,17 @@ public sealed class CoupledWeatherYear
     /// <param name="year">The calendar year the days belong to.</param>
     /// <param name="seed">Seed the run was drawn with, so it can be reproduced.</param>
     /// <param name="days">The generated days, in date order.</param>
-    internal CoupledWeatherYear(int year, int seed, IReadOnlyList<CoupledWeatherDay> days)
+    /// <param name="grid">Where each day's hours sit in time, shared by both halves.</param>
+    /// <param name="clearSkyByHour">Every hour's clear-sky ceiling, Wh/m², in day order.</param>
+    /// <param name="speedByHour">Every hour's mean speed at the wind target, m/s, in day order.</param>
+    internal CoupledWeatherYear(
+        int year,
+        int seed,
+        IReadOnlyList<CoupledWeatherDay> days,
+        HourGrid grid,
+        double[] clearSkyByHour,
+        double[] speedByHour
+    )
     {
         ArgumentNullException.ThrowIfNull(days);
         if (days.Count == 0)
@@ -56,9 +76,10 @@ public sealed class CoupledWeatherYear
         }
 
         // Reused rather than re-derived: the solar year validates that every day belongs to the
-        // year and sums the totals, the wind year averages them. Both checks still apply here.
-        Solar = new SyntheticSolarYear(year, seed, solar);
-        Wind = new SyntheticWindYear(year, seed, wind);
+        // year and sums the totals, the wind year averages them, and both check the hour counts.
+        // One grid for both, so a coupled hour's two halves can never disagree on the time.
+        Solar = new SyntheticSolarYear(year, seed, solar, grid, clearSkyByHour);
+        Wind = new SyntheticWindYear(year, seed, wind, grid, speedByHour);
     }
 
     /// <summary>The calendar year generated.</summary>
@@ -80,4 +101,50 @@ public sealed class CoupledWeatherYear
 
     /// <summary>The wind half, with its monthly and annual means.</summary>
     public SyntheticWindYear Wind { get; }
+
+    /// <summary>
+    /// Every generated hour with both resources on it, in order: twenty-four per day, 8,784 in a
+    /// leap year. Each day's hours add up to its solar total and average to its wind speed.
+    ///
+    /// <para>Computed with the year and stored compactly; the records themselves are built as they
+    /// are read, so holding many years in a cache costs two numbers per hour, not two records.</para>
+    /// </summary>
+    public IReadOnlyList<CoupledWeatherHour> Hours =>
+        new HourView<CoupledWeatherHour>(Solar.Grid.Count, HourAt);
+
+    /// <summary>
+    /// The hours starting in <c>[startInclusive, endExclusive)</c>: 06:00 to 12:00 is six hours,
+    /// 06:00 to 11:00 inclusive of their starts, which together cover exactly that interval.
+    ///
+    /// <para>Clamped to this year, so a range reaching into the next one returns this year's part
+    /// of it, and a range outside the year returns nothing. A span crossing New Year asks both
+    /// years.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The end is before the start.</exception>
+    public IReadOnlyList<CoupledWeatherHour> HoursBetween(
+        DateTimeOffset startInclusive,
+        DateTimeOffset endExclusive
+    ) => Solar.Grid.IndicesBetween(startInclusive, endExclusive).ConvertAll(HourAt);
+
+    /// <summary>
+    /// <see cref="HoursBetween(DateTimeOffset, DateTimeOffset)"/> for <see cref="DateTime"/>s.
+    ///
+    /// <para>An unspecified <see cref="DateTime.Kind"/> is read as wall-clock time in the solar
+    /// site's time zone - UTC for the default site - rather than through the machine's local zone,
+    /// which is what the implicit conversion to <see cref="DateTimeOffset"/> would silently do.
+    /// <c>new DateTime(2025, 1, 1, 6, 0, 0)</c> means 06:00 UTC here, on any server.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">The end is before the start.</exception>
+    public IReadOnlyList<CoupledWeatherHour> HoursBetween(
+        DateTime startInclusive,
+        DateTime endExclusive
+    ) =>
+        HoursBetween(Solar.Grid.ToInstant(startInclusive), Solar.Grid.ToInstant(endExclusive));
+
+    private CoupledWeatherHour HourAt(int index)
+    {
+        var solar = Solar.HourAt(index);
+
+        return new CoupledWeatherHour(solar.Start, solar, Wind.HourAt(index));
+    }
 }

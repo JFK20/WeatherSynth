@@ -1,3 +1,5 @@
+using WeatherSynth.Wind;
+
 namespace WeatherSynth.Climate;
 
 /// <summary>
@@ -181,5 +183,65 @@ internal sealed class SyntheticWindGenerator
         days.AddRange(GenerateYear(year, new Random(seed)));
 
         return new SyntheticWindYear(year, seed, days);
+    }
+
+    /// <summary>
+    /// <see cref="GenerateYear(int, int)"/> with every day spread across its hours as well.
+    ///
+    /// <para>The days are drawn exactly as without hours - same stream, same order - and the hours
+    /// come from a second stream seeded through <see cref="HourlyWindGenerator.StreamSeed"/>, so
+    /// asking for hours changes no day.</para>
+    /// </summary>
+    /// <param name="year">Calendar year to generate.</param>
+    /// <param name="seed">Seed for the run. The same seed and site reproduce days and hours exactly.</param>
+    /// <param name="hourly">Spreads each day over its hours. Reset here before the first day.</param>
+    /// <param name="timeZone">
+    /// Zone whose midnights bound the days' hours; UTC when null, which is how the record's own
+    /// days are bounded.
+    /// </param>
+    public SyntheticWindYear GenerateYear(
+        int year,
+        int seed,
+        HourlyWindGenerator hourly,
+        TimeZoneInfo? timeZone = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(hourly);
+
+        var zone = timeZone ?? TimeZoneInfo.Utc;
+        var days = new List<SyntheticWindDay>(366);
+        days.AddRange(GenerateYear(year, new Random(seed)));
+
+        var dayStarts = new List<DateTimeOffset>(days.Count);
+        var speedByHour = new double[days.Count * HourGrid.HoursPerDay];
+        var hourlyRandom = new Random(HourlyWindGenerator.StreamSeed(seed));
+
+        hourly.Reset();
+
+        for (int i = 0; i < days.Count; i++)
+        {
+            var dayStart = MidnightIn(days[i].Date, zone);
+            dayStarts.Add(dayStart);
+
+            hourly.FillDay(
+                days[i],
+                dayStart,
+                hourlyRandom,
+                speedByHour.AsSpan(i * HourGrid.HoursPerDay, HourGrid.HoursPerDay)
+            );
+        }
+
+        return new SyntheticWindYear(year, seed, days, new HourGrid(dayStarts, zone), speedByHour);
+    }
+
+    /// <summary>
+    /// Local midnight in <paramref name="zone"/>, at the offset in force at noon - the same rule
+    /// the solar ceiling bounds its days by, so wind hours generated alone and solar hours line up.
+    /// </summary>
+    internal static DateTimeOffset MidnightIn(DateOnly date, TimeZoneInfo zone)
+    {
+        var midnight = date.ToDateTime(TimeOnly.MinValue);
+
+        return new DateTimeOffset(midnight, zone.GetUtcOffset(midnight.AddHours(12)));
     }
 }

@@ -145,10 +145,18 @@ public static class SyntheticWeather
             BochumEssenCoefficients.IntradaySampleCount
         );
 
+        var hourly = HourlyWindModel.FromCoefficients(
+            BochumEssenCoefficients.HourlyPersistence,
+            BochumEssenCoefficients.DiurnalWeight,
+            BochumEssenCoefficients.DiurnalPattern,
+            BochumEssenCoefficients.HourlySampleCount
+        );
+
         return new SyntheticWindProvider(
             model,
             DwdWindStations.EssenBredeney.ToSite(),
-            intradayShape
+            intradayShape,
+            hourly
         );
     }
 

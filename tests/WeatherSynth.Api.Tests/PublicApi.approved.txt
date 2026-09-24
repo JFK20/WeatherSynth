@@ -9,8 +9,21 @@ record struct WeatherSynth.CoupledWeatherDay : IEquatable<CoupledWeatherDay>
     int GetHashCode()
     string ToString()
     void Deconstruct(ref DateOnly, ref SyntheticSolarDay, ref SyntheticWindDay)
+record struct WeatherSynth.CoupledWeatherHour : IEquatable<CoupledWeatherHour>
+    .ctor(DateTimeOffset, SyntheticSolarHour, SyntheticWindHour)
+    DateTimeOffset Start { get; init; }
+    SyntheticSolarHour Solar { get; init; }
+    SyntheticWindHour Wind { get; init; }
+    bool Equals(CoupledWeatherHour)
+    bool Equals(object)
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateTimeOffset, ref SyntheticSolarHour, ref SyntheticWindHour)
 sealed class WeatherSynth.CoupledWeatherYear
     IReadOnlyList<CoupledWeatherDay> Days { get; }
+    IReadOnlyList<CoupledWeatherHour> Hours { get; }
+    IReadOnlyList<CoupledWeatherHour> HoursBetween(DateTime, DateTime)
+    IReadOnlyList<CoupledWeatherHour> HoursBetween(DateTimeOffset, DateTimeOffset)
     SyntheticSolarYear Solar { get; }
     SyntheticWindYear Wind { get; }
     int Seed { get; }
@@ -39,6 +52,18 @@ record struct WeatherSynth.SyntheticSolarDay : IEquatable<SyntheticSolarDay>
     int GetHashCode()
     string ToString()
     void Deconstruct(ref DateOnly, ref double, ref double, ref double)
+record struct WeatherSynth.SyntheticSolarHour : IEquatable<SyntheticSolarHour>
+    .ctor(DateTimeOffset, double, double, double)
+    DateTimeOffset Start { get; init; }
+    bool Equals(SyntheticSolarHour)
+    bool Equals(object)
+    double ClearSkyIndex { get; init; }
+    double ClearSkyWhPerM2 { get; init; }
+    double GhiKWhPerM2 { get; }
+    double GhiWhPerM2 { get; init; }
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateTimeOffset, ref double, ref double, ref double)
 record struct WeatherSynth.SyntheticSolarMonth : IEquatable<SyntheticSolarMonth>
     .ctor(int, int, double, double, double)
     bool Equals(SyntheticSolarMonth)
@@ -53,6 +78,9 @@ record struct WeatherSynth.SyntheticSolarMonth : IEquatable<SyntheticSolarMonth>
     void Deconstruct(ref int, ref int, ref double, ref double, ref double)
 sealed class WeatherSynth.SyntheticSolarYear
     IReadOnlyList<SyntheticSolarDay> Days { get; }
+    IReadOnlyList<SyntheticSolarHour> Hours { get; }
+    IReadOnlyList<SyntheticSolarHour> HoursBetween(DateTime, DateTime)
+    IReadOnlyList<SyntheticSolarHour> HoursBetween(DateTimeOffset, DateTimeOffset)
     IReadOnlyList<SyntheticSolarMonth> Months { get; }
     double ClearSkyFraction { get; }
     double ClearSkyKWhPerM2 { get; }
@@ -72,6 +100,16 @@ record struct WeatherSynth.SyntheticWindDay : IEquatable<SyntheticWindDay>
     int GetHashCode()
     string ToString()
     void Deconstruct(ref DateOnly, ref double, ref double, ref double)
+record struct WeatherSynth.SyntheticWindHour : IEquatable<SyntheticWindHour>
+    .ctor(DateTimeOffset, double, double)
+    DateTimeOffset Start { get; init; }
+    bool Equals(SyntheticWindHour)
+    bool Equals(object)
+    double Speed { get; init; }
+    double SpeedAtReference { get; init; }
+    int GetHashCode()
+    string ToString()
+    void Deconstruct(ref DateTimeOffset, ref double, ref double)
 record struct WeatherSynth.SyntheticWindMonth : IEquatable<SyntheticWindMonth>
     .ctor(int, int, double, double, double)
     bool Equals(SyntheticWindMonth)
@@ -86,6 +124,9 @@ record struct WeatherSynth.SyntheticWindMonth : IEquatable<SyntheticWindMonth>
     void Deconstruct(ref int, ref int, ref double, ref double, ref double)
 sealed class WeatherSynth.SyntheticWindYear
     IReadOnlyList<SyntheticWindDay> Days { get; }
+    IReadOnlyList<SyntheticWindHour> Hours { get; }
+    IReadOnlyList<SyntheticWindHour> HoursBetween(DateTime, DateTime)
+    IReadOnlyList<SyntheticWindHour> HoursBetween(DateTimeOffset, DateTimeOffset)
     IReadOnlyList<SyntheticWindMonth> Months { get; }
     double EnergyPatternFactor { get; }
     double MaxSpeed { get; }
