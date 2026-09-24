@@ -87,6 +87,13 @@ internal sealed class DwdSolarDay
         DaylightIntervalCount > 0 && ObservedDaylightIntervalCount == DaylightIntervalCount;
 
     /// <summary>
+    /// Both quality filters the fit depends on: complete, and free of sensor-outage zeros. A day
+    /// of false zeros drags the overcast tail down and nothing downstream can tell it apart from
+    /// a genuinely dark one.
+    /// </summary>
+    public bool IsUsable => IsComplete && !HasImplausibleZeros;
+
+    /// <summary>
     /// Fraction of the day's measured energy arriving as diffuse rather than direct radiation.
     /// Around 0.15-0.25 on cloudless days, rising towards 1.0 under thick overcast which
     /// makes it a good second opinion when picking clear days for calibration.

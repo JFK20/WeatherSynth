@@ -56,31 +56,18 @@ internal sealed record DwdWindHour
 internal static class DwdWindReader
 {
     /// <summary>
-    /// DWD's missing-value sentinel, shared with the solar product and just as damaging read as
-    /// a number: a single missing hour would drag a daily mean speed to roughly −40 m/s.
+    /// Whole hours, <c>yyyyMMddHH</c> - a different format string from the solar file's
+    /// <c>yyyyMMddHH:mm</c>, because solar intervals are WOZ-aligned and land on odd minutes
+    /// while these are plain clock hours.
     /// </summary>
-    private const double MissingSentinel = -999.0;
+    private const string TimestampFormat = "yyyyMMddHH";
 
     /// <summary>
     /// Streams the hours in a DWD wind file, skipping the header.
     /// </summary>
     /// <param name="csvPath">Path to the decompressed <c>produkt_ff_stunde_*.txt</c> / CSV file.</param>
-    public static IEnumerable<DwdWindHour> Read(string csvPath)
-    {
-        using var reader = new StreamReader(csvPath);
-
-        // Header.
-        if (reader.ReadLine() is null)
-            yield break;
-
-        while (reader.ReadLine() is { } line)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            yield return ParseLine(line);
-        }
-    }
+    public static IEnumerable<DwdWindHour> Read(string csvPath) =>
+        DwdCsv.ReadDataLines(csvPath).Select(ParseLine);
 
     /// <summary>
     /// Parses a single data row. Column order is fixed by the DWD format:
@@ -94,33 +81,15 @@ internal static class DwdWindReader
                 $"Expected at least 5 columns, found {columns.Length}: {line}"
             );
 
-        var timestamp = ParseTimestampUtc(columns[1]);
+        var timestamp = DwdCsv.ParseTimestampUtc(columns[1], TimestampFormat);
 
         return new DwdWindHour
         {
             TimestampUtc = timestamp,
             UtcDate = DateOnly.FromDateTime(timestamp.UtcDateTime),
             QualityLevel = int.Parse(columns[2].Trim(), CultureInfo.InvariantCulture),
-            SpeedMetersPerSecond = ParseOptional(columns[3]),
-            DirectionDegrees = ParseOptional(columns[4]),
+            SpeedMetersPerSecond = DwdCsv.ParseOptional(columns[3]),
+            DirectionDegrees = DwdCsv.ParseOptional(columns[4]),
         };
-    }
-
-    /// <summary>Parses a numeric column, mapping DWD's −999 sentinel to null.</summary>
-    private static double? ParseOptional(string value)
-    {
-        double parsed = double.Parse(value.Trim(), CultureInfo.InvariantCulture);
-        return parsed == MissingSentinel ? null : parsed;
-    }
-
-    /// <summary>
-    /// Whole hours, <c>yyyyMMddHH</c> - a different format string from the solar file's
-    /// <c>yyyyMMddHH:mm</c>, because solar intervals are WOZ-aligned and land on odd minutes
-    /// while these are plain clock hours.
-    /// </summary>
-    private static DateTimeOffset ParseTimestampUtc(string value)
-    {
-        var local = DateTime.ParseExact(value.Trim(), "yyyyMMddHH", CultureInfo.InvariantCulture);
-        return new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Utc));
     }
 }

@@ -56,10 +56,6 @@ public sealed class SyntheticSolarProvider
 
     /// <summary>
     /// Fits from station days already read, for callers that have the record in hand.
-    ///
-    /// <para>Applies both quality filters the fit depends on: incomplete days, and days whose
-    /// zeros are a sensor outage rather than darkness. A day of false zeros drags the overcast
-    /// tail down and nothing downstream can tell it apart from a genuinely dark one.</para>
     /// </summary>
     /// <param name="days">Aggregated station days, unfiltered.</param>
     /// <param name="station">Station metadata. Its coordinates become the fitting geometry.</param>
@@ -71,11 +67,27 @@ public sealed class SyntheticSolarProvider
         ArgumentNullException.ThrowIfNull(days);
         ArgumentNullException.ThrowIfNull(station);
 
-        var usable = days.Where(d => d.IsComplete && !d.HasImplausibleZeros);
-        var series = ClearnessIndexBuilder.Build(usable, station);
-
-        return new SyntheticSolarProvider(ClearSkyIndexModel.Fit(series), station.ToSite());
+        return FromSeries(BuildSeries(days, station), station);
     }
+
+    /// <summary>
+    /// The clearness series the fit is made on: usable days only (see
+    /// <see cref="DwdSolarDay.IsUsable"/>), measured against the station's own geometry.
+    ///
+    /// <para>The expensive half of fitting - one clear-sky integration per day. Build it once and
+    /// hand it to everything fitted on the same days, as <see cref="CoupledWeatherProvider"/>
+    /// does.</para>
+    /// </summary>
+    internal static IReadOnlyList<DailyClearness> BuildSeries(
+        IEnumerable<DwdSolarDay> days,
+        DwdStation station
+    ) => ClearnessIndexBuilder.Build(days.Where(d => d.IsUsable), station);
+
+    /// <summary>Fits from a clearness series built by <see cref="BuildSeries"/>.</summary>
+    internal static SyntheticSolarProvider FromSeries(
+        IReadOnlyList<DailyClearness> series,
+        DwdStation station
+    ) => new(ClearSkyIndexModel.Fit(series), station.ToSite());
 
     /// <summary>
     /// The fitted model behind this provider: the twelve monthly shapes and the persistence.

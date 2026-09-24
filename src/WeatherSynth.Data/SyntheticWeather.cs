@@ -87,13 +87,14 @@ public static class SyntheticWeather
 
     private static SyntheticSolarProvider BuildSolar()
     {
-        var monthly = new ScaledBeta[12];
-        for (int i = 0; i < 12; i++)
-            monthly[i] = new ScaledBeta(
+        var monthly = Enumerable
+            .Range(0, 12)
+            .Select(i => new ScaledBeta(
                 BochumEssenCoefficients.SolarAlpha[i],
                 BochumEssenCoefficients.SolarBeta[i],
                 BochumEssenCoefficients.SolarSupport
-            );
+            ))
+            .ToArray();
 
         var pooled = new ScaledBeta(
             BochumEssenCoefficients.SolarPooledAlpha,
@@ -114,13 +115,14 @@ public static class SyntheticWeather
 
     private static SyntheticWindProvider BuildWind()
     {
-        var monthly = new Weibull[12];
-        for (int i = 0; i < 12; i++)
-            monthly[i] = new Weibull(
+        var monthly = Enumerable
+            .Range(0, 12)
+            .Select(i => new Weibull(
                 BochumEssenCoefficients.WindShape[i],
                 BochumEssenCoefficients.WindScale[i],
                 BochumEssenCoefficients.WindLocation[i]
-            );
+            ))
+            .ToArray();
 
         var pooled = new Weibull(
             BochumEssenCoefficients.WindPooledShape,

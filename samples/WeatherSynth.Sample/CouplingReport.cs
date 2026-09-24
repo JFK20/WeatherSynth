@@ -38,7 +38,7 @@ internal static class CouplingReport
         );
 
         var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsComplete && !d.HasImplausibleZeros),
+            solarDays.Where(d => d.IsUsable),
             solarStation
         );
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
@@ -129,7 +129,7 @@ internal static class CouplingReport
     )
     {
         var sunshineByDate = solarDays
-            .Where(d => d.IsComplete && !d.HasImplausibleZeros)
+            .Where(d => d.IsUsable)
             .ToDictionary(d => d.Date, d => d.SunshineMinutes);
 
         var pairs = new List<(int Month, double Sunshine, double Speed)>();

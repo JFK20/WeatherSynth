@@ -95,7 +95,18 @@ public sealed class SyntheticWindProvider
         ArgumentNullException.ThrowIfNull(days);
         ArgumentNullException.ThrowIfNull(station);
 
-        var series = WindSpeedSeriesBuilder.Build(days);
+        return FromSeries(WindSpeedSeriesBuilder.Build(days), station);
+    }
+
+    /// <summary>
+    /// Fits from a speed series built by <see cref="WindSpeedSeriesBuilder.Build"/>, for callers
+    /// that fit more than one thing on the same days, as <see cref="CoupledWeatherProvider"/> does.
+    /// </summary>
+    internal static SyntheticWindProvider FromSeries(
+        IReadOnlyList<DailyWindSpeed> series,
+        DwdWindStation station
+    )
+    {
         var model = WindSpeedModel.Fit(series, station.AnemometerHeightMeters);
 
         // Fitted from the series already in hand, so this costs one more pass over ~6,000 days

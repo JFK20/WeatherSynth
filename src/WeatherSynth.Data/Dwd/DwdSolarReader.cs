@@ -76,11 +76,10 @@ internal sealed record DwdSolarInterval
 internal static class DwdSolarReader
 {
     /// <summary>
-    /// DWD's missing-value sentinel. Reading it as a number is the single most damaging
-    /// mistake available with this format: a missing hour would contribute roughly
-    /// −2,775 Wh/m² to a daily total, quietly producing negative irradiance.
+    /// Both timestamp columns carry minutes, because solar intervals are WOZ-aligned and land on
+    /// odd minutes.
     /// </summary>
-    private const double MissingSentinel = -999.0;
+    private const string TimestampFormat = "yyyyMMddHH:mm";
 
     /// <summary>
     /// DWD publishes hourly radiation sums in J/cm². Converting to Wh/m²:
@@ -95,22 +94,8 @@ internal static class DwdSolarReader
     /// Streams the intervals in a DWD solar file, skipping the header.
     /// </summary>
     /// <param name="csvPath">Path to the decompressed <c>produkt_st_stunde_*.txt</c> / CSV file.</param>
-    public static IEnumerable<DwdSolarInterval> Read(string csvPath)
-    {
-        using var reader = new StreamReader(csvPath);
-
-        // Header.
-        if (reader.ReadLine() is null)
-            yield break;
-
-        while (reader.ReadLine() is { } line)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            yield return ParseLine(line);
-        }
-    }
+    public static IEnumerable<DwdSolarInterval> Read(string csvPath) =>
+        DwdCsv.ReadDataLines(csvPath).Select(ParseLine);
 
     /// <summary>
     /// Parses a single data row. Column order is fixed by the DWD format:
@@ -126,8 +111,8 @@ internal static class DwdSolarReader
             );
 
         // MESS_DATUM is the END of the interval, in UTC.
-        var endUtc = ParseTimestampUtc(columns[1]);
-        var wozEnd = ParseTimestamp(columns[8]);
+        var endUtc = DwdCsv.ParseTimestampUtc(columns[1], TimestampFormat);
+        var wozEnd = DwdCsv.ParseTimestamp(columns[8], TimestampFormat);
 
         // The interval ending at WOZ midnight belongs to the previous solar day. Those hours
         // are always dark, so this never moves energy between days but keeping it correct
@@ -142,7 +127,7 @@ internal static class DwdSolarReader
             WozEnd = wozEnd,
             DiffuseWhPerM2 = ParseRadiation(columns[4]),
             GlobalWhPerM2 = ParseRadiation(columns[5]),
-            SunshineMinutes = ParseOptional(columns[6]),
+            SunshineMinutes = DwdCsv.ParseOptional(columns[6]),
             ZenithDegrees = double.Parse(columns[7], CultureInfo.InvariantCulture),
         };
     }
@@ -150,20 +135,7 @@ internal static class DwdSolarReader
     /// <summary>Radiation column: J/cm², or the missing sentinel, converted to Wh/m².</summary>
     private static double? ParseRadiation(string value)
     {
-        double? raw = ParseOptional(value);
+        double? raw = DwdCsv.ParseOptional(value);
         return raw * JoulePerCm2ToWhPerM2;
     }
-
-    /// <summary>Parses a numeric column, mapping DWD's −999 sentinel to null.</summary>
-    private static double? ParseOptional(string value)
-    {
-        double parsed = double.Parse(value.Trim(), CultureInfo.InvariantCulture);
-        return parsed == MissingSentinel ? null : parsed;
-    }
-
-    private static DateTime ParseTimestamp(string value) =>
-        DateTime.ParseExact(value.Trim(), "yyyyMMddHH:mm", CultureInfo.InvariantCulture);
-
-    private static DateTimeOffset ParseTimestampUtc(string value) =>
-        new(DateTime.SpecifyKind(ParseTimestamp(value), DateTimeKind.Utc));
 }

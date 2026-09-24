@@ -110,21 +110,13 @@ public sealed class CoupledWeatherProvider
         ArgumentNullException.ThrowIfNull(windDays);
         ArgumentNullException.ThrowIfNull(windStation);
 
-        // Materialised because each list is walked twice below - once to fit its own marginals,
-        // once to build the paired series - and the caller's sequence may be lazy.
-        var solarList = solarDays as IReadOnlyList<DwdSolarDay> ?? solarDays.ToList();
-        var windList = windDays as IReadOnlyList<DwdWindDay> ?? windDays.ToList();
+        // Each series is built once and shared, so the coupling sees exactly the days the marginals
+        // were fitted on and no others.
+        var clearness = SyntheticSolarProvider.BuildSeries(solarDays, solarStation);
+        var speeds = WindSpeedSeriesBuilder.Build(windDays);
 
-        var solar = SyntheticSolarProvider.FromStationDays(solarList, solarStation);
-        var wind = SyntheticWindProvider.FromStationDays(windList, windStation);
-
-        // The same two filters the two providers apply, so the coupling sees exactly the days the
-        // marginals were fitted on and no others.
-        var clearness = ClearnessIndexBuilder.Build(
-            solarList.Where(d => d.IsComplete && !d.HasImplausibleZeros),
-            solarStation
-        );
-        var speeds = WindSpeedSeriesBuilder.Build(windList);
+        var solar = SyntheticSolarProvider.FromSeries(clearness, solarStation);
+        var wind = SyntheticWindProvider.FromSeries(speeds, windStation);
 
         var paired = CoupledSeriesBuilder.Build(clearness, speeds);
 

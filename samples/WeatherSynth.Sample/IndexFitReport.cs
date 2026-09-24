@@ -53,7 +53,7 @@ internal static class IndexFitReport
         DwdStation station
     )
     {
-        var usable = days.Where(d => d.IsComplete && !d.HasImplausibleZeros).ToList();
+        var usable = days.Where(d => d.IsUsable).ToList();
         return ClearnessIndexBuilder.Build(usable, station);
     }
 

@@ -36,7 +36,7 @@ internal static class CombinedPayload
     )
     {
         var clearness = ClearnessIndexBuilder.Build(
-            solarDays.Where(d => d.IsComplete && !d.HasImplausibleZeros),
+            solarDays.Where(d => d.IsUsable),
             station
         );
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
