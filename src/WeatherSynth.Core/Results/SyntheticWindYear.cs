@@ -39,8 +39,7 @@ public sealed class SyntheticWindYear
     /// <param name="days">The generated days, in date order.</param>
     internal SyntheticWindYear(int year, int seed, IReadOnlyList<SyntheticWindDay> days)
     {
-        if (days is null)
-            throw new ArgumentNullException(nameof(days));
+        ArgumentNullException.ThrowIfNull(days);
         if (days.Count == 0)
             throw new ArgumentException("A year needs at least one day.", nameof(days));
 

@@ -124,17 +124,10 @@ internal sealed class ClearSkyIndexModel : IMonthlyMarginals
         double persistence
     )
     {
-        if (monthly is null)
-            throw new ArgumentNullException(nameof(monthly));
-        if (monthly.Count != 12)
-            throw new ArgumentException(
-                $"Expected twelve monthly fits, got {monthly.Count}.",
-                nameof(monthly)
-            );
-        if (pooled is null)
-            throw new ArgumentNullException(nameof(pooled));
+        var resolved = MonthlyFit.RequireTwelve(monthly, nameof(monthly));
+        ArgumentNullException.ThrowIfNull(pooled);
 
-        return new ClearSkyIndexModel(monthly.ToArray(), pooled, support, persistence);
+        return new ClearSkyIndexModel(resolved, pooled, support, persistence);
     }
 
     /// <summary>
@@ -154,47 +147,27 @@ internal sealed class ClearSkyIndexModel : IMonthlyMarginals
         double support = DefaultSupport
     )
     {
-        if (series is null)
-            throw new ArgumentNullException(nameof(series));
+        ArgumentNullException.ThrowIfNull(series);
 
-        var byMonth = new List<double>[12];
-        for (int i = 0; i < 12; i++)
-            byMonth[i] = new List<double>();
-
-        // Dates are kept alongside the values because the persistence fit below needs them,
-        // and the caller's sequence may be lazy - enumerating it a second time is not safe.
+        // Materialised because the fit walks it more than once, and the caller's sequence may be
+        // lazy - enumerating it a second time is not safe.
         var dated = new List<(DateOnly Date, double Index)>();
 
         foreach (var day in series)
         {
             double index = day.ClearSkyIndex;
-            if (double.IsNaN(index))
-                continue;
-
-            byMonth[day.Date.Month - 1].Add(index);
-            dated.Add((day.Date, index));
+            if (!double.IsNaN(index))
+                dated.Add((day.Date, index));
         }
 
         if (dated.Count == 0)
             throw new ArgumentException("No usable days in the series.", nameof(series));
 
-        var pooled = ScaledBeta.FitByMoments(dated.Select(d => d.Index), support);
-
-        var monthly = new ScaledBeta[12];
-        for (int i = 0; i < 12; i++)
-        {
-            monthly[i] =
-                byMonth[i].Count >= MinimumSamplesPerMonth
-                    ? ScaledBeta.FitByMoments(byMonth[i], support)
-                    : pooled;
-        }
-
-        // Order matters: phi is measured through the monthly CDFs, so they have to exist
-        // first. The same ordering constraint the clear-sky ceiling imposes on the Betas,
-        // one level further up.
-        double persistence = SeriesStatistics.LatentPersistence(
+        var (monthly, pooled, persistence) = MonthlyFit.Fit(
             dated,
-            (index, month) => monthly[month - 1].CumulativeProbability(index)
+            values => ScaledBeta.FitByMoments(values, support),
+            (beta, index) => beta.CumulativeProbability(index),
+            MinimumSamplesPerMonth
         );
 
         return new ClearSkyIndexModel(monthly, pooled, support, persistence);

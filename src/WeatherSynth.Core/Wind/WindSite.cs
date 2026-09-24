@@ -88,8 +88,7 @@ public sealed record WindSite(double HeightMeters, double RoughnessLengthMeters)
     /// <param name="profile">The profile law; defaults to <see cref="WindProfile.LogLaw"/>.</param>
     public double TransferFactorFrom(WindSite reference, WindProfile? profile = null)
     {
-        if (reference is null)
-            throw new ArgumentNullException(nameof(reference));
+        ArgumentNullException.ThrowIfNull(reference);
 
         return (profile ?? WindProfile.LogLaw).Factor(reference, this);
     }

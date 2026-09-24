@@ -98,12 +98,9 @@ internal sealed class MonthlyCoupling
         IMonthlyMarginals marginalsB
     )
     {
-        if (paired is null)
-            throw new ArgumentNullException(nameof(paired));
-        if (marginalsA is null)
-            throw new ArgumentNullException(nameof(marginalsA));
-        if (marginalsB is null)
-            throw new ArgumentNullException(nameof(marginalsB));
+        ArgumentNullException.ThrowIfNull(paired);
+        ArgumentNullException.ThrowIfNull(marginalsA);
+        ArgumentNullException.ThrowIfNull(marginalsB);
 
         Func<double, int, double> cdfA = marginalsA.CumulativeProbability;
         Func<double, int, double> cdfB = marginalsB.CumulativeProbability;
@@ -166,10 +163,8 @@ internal sealed class MonthlyCoupling
         double pooled
     )
     {
-        if (byMonth is null)
-            throw new ArgumentNullException(nameof(byMonth));
-        if (counts is null)
-            throw new ArgumentNullException(nameof(counts));
+        ArgumentNullException.ThrowIfNull(byMonth);
+        ArgumentNullException.ThrowIfNull(counts);
         if (byMonth.Count != 12)
             throw new ArgumentException(
                 $"Expected twelve monthly coefficients, got {byMonth.Count}.",
@@ -205,8 +200,7 @@ internal sealed class MonthlyCoupling
     /// <param name="byMonth">Twelve values in January-to-December order, each in [-1, 1].</param>
     public static MonthlyCoupling FromValues(IReadOnlyList<double> byMonth)
     {
-        if (byMonth is null)
-            throw new ArgumentNullException(nameof(byMonth));
+        ArgumentNullException.ThrowIfNull(byMonth);
         if (byMonth.Count != 12)
             throw new ArgumentException(
                 $"Expected twelve monthly coefficients, got {byMonth.Count}.",

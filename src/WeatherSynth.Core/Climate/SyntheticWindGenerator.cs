@@ -99,8 +99,7 @@ internal sealed class SyntheticWindGenerator
     /// </summary>
     public SyntheticWindDay GenerateDay(DateOnly date, Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         return DayFromReferenceSpeed(date, _chain.Next(date, random));
     }
@@ -148,17 +147,13 @@ internal sealed class SyntheticWindGenerator
         Random random
     )
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
-        if (endInclusive < start)
-            throw new ArgumentException("End must not precede start.", nameof(endInclusive));
+        ArgumentNullException.ThrowIfNull(random);
+        DailyRun.Validate(start, endInclusive);
 
-        // Outside the iterator, so both the argument checks and the reset happen when Generate
-        // is called rather than on the first MoveNext. Otherwise two enumerables taken from one
-        // generator would silently share a chain until whichever was enumerated first.
+        // Eager for the same reason as the solar generator's: see SyntheticSolarGenerator.Generate.
         Reset();
 
-        return Iterate(start, endInclusive, random);
+        return DailyRun.Days(start, endInclusive).Select(date => GenerateDay(date, random));
     }
 
     /// <summary>
@@ -168,8 +163,11 @@ internal sealed class SyntheticWindGenerator
     /// Unlike the solar generator, two runs over different years with the same seed are
     /// identical apart from the calendar: there is no ceiling for the year to change.</para>
     /// </summary>
-    public IEnumerable<SyntheticWindDay> GenerateYear(int year, Random random) =>
-        Generate(new DateOnly(year, 1, 1), new DateOnly(year, 12, 31), random);
+    public IEnumerable<SyntheticWindDay> GenerateYear(int year, Random random)
+    {
+        var (start, endInclusive) = DailyRun.Year(year);
+        return Generate(start, endInclusive, random);
+    }
 
     /// <summary>
     /// Generates a whole year from a seed, with its monthly and annual aggregates - the shape a
@@ -183,15 +181,5 @@ internal sealed class SyntheticWindGenerator
         days.AddRange(GenerateYear(year, new Random(seed)));
 
         return new SyntheticWindYear(year, seed, days);
-    }
-
-    private IEnumerable<SyntheticWindDay> Iterate(
-        DateOnly start,
-        DateOnly endInclusive,
-        Random random
-    )
-    {
-        for (var date = start; date <= endInclusive; date = date.AddDays(1))
-            yield return GenerateDay(date, random);
     }
 }

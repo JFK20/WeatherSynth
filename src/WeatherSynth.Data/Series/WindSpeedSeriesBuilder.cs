@@ -25,8 +25,7 @@ internal static class WindSpeedSeriesBuilder
     /// <param name="days">Station days, unfiltered.</param>
     public static IReadOnlyList<DailyWindSpeed> Build(IEnumerable<DwdWindDay> days)
     {
-        if (days is null)
-            throw new ArgumentNullException(nameof(days));
+        ArgumentNullException.ThrowIfNull(days);
 
         var series = new List<DailyWindSpeed>();
 

@@ -75,14 +75,10 @@ public sealed class CoupledWeatherProvider
         DwdWindStation windStation
     )
     {
-        if (solarCsvPath is null)
-            throw new ArgumentNullException(nameof(solarCsvPath));
-        if (solarStation is null)
-            throw new ArgumentNullException(nameof(solarStation));
-        if (windCsvPath is null)
-            throw new ArgumentNullException(nameof(windCsvPath));
-        if (windStation is null)
-            throw new ArgumentNullException(nameof(windStation));
+        ArgumentNullException.ThrowIfNull(solarCsvPath);
+        ArgumentNullException.ThrowIfNull(solarStation);
+        ArgumentNullException.ThrowIfNull(windCsvPath);
+        ArgumentNullException.ThrowIfNull(windStation);
 
         var solarDays = DwdSolarDayAggregator.ToDays(DwdSolarReader.Read(solarCsvPath));
         var windDays = DwdWindDayAggregator.ToDays(DwdWindReader.Read(windCsvPath));
@@ -109,14 +105,10 @@ public sealed class CoupledWeatherProvider
         DwdWindStation windStation
     )
     {
-        if (solarDays is null)
-            throw new ArgumentNullException(nameof(solarDays));
-        if (solarStation is null)
-            throw new ArgumentNullException(nameof(solarStation));
-        if (windDays is null)
-            throw new ArgumentNullException(nameof(windDays));
-        if (windStation is null)
-            throw new ArgumentNullException(nameof(windStation));
+        ArgumentNullException.ThrowIfNull(solarDays);
+        ArgumentNullException.ThrowIfNull(solarStation);
+        ArgumentNullException.ThrowIfNull(windDays);
+        ArgumentNullException.ThrowIfNull(windStation);
 
         // Materialised because each list is walked twice below - once to fit its own marginals,
         // once to build the paired series - and the caller's sequence may be lazy.
@@ -189,17 +181,10 @@ public sealed class CoupledWeatherProvider
         WindProfile? profile = null
     )
     {
+        var (start, endInclusive) = DailyRun.Year(year);
+
         var days = new List<CoupledWeatherDay>(366);
-        days.AddRange(
-            Generate(
-                new DateOnly(year, 1, 1),
-                new DateOnly(year, 12, 31),
-                seed,
-                solarSite,
-                windSite,
-                profile
-            )
-        );
+        days.AddRange(Generate(start, endInclusive, seed, solarSite, windSite, profile));
 
         return new CoupledWeatherYear(year, seed, days);
     }
@@ -227,17 +212,27 @@ public sealed class CoupledWeatherProvider
         WindProfile? profile = null
     )
     {
-        if (endInclusive < start)
-            throw new ArgumentException("End must not precede start.", nameof(endInclusive));
+        DailyRun.Validate(start, endInclusive);
 
         var solarGenerator = _solar.CreateGenerator(solarSite);
         var windGenerator = _wind.CreateGenerator(windSite, profile);
         var chain = CreateChain();
         var random = new Random(seed);
 
-        // Outside the iterator so the argument check happens on the call rather than on the first
+        // Not an iterator, so the argument check happens on the call rather than on the first
         // MoveNext, matching what the two single-resource generators do.
-        return Iterate(start, endInclusive, chain, solarGenerator, windGenerator, random);
+        return DailyRun
+            .Days(start, endInclusive)
+            .Select(date =>
+            {
+                var (index, speed) = chain.Next(date, random);
+
+                return new CoupledWeatherDay(
+                    date,
+                    solarGenerator.DayFromIndex(date, index),
+                    windGenerator.DayFromReferenceSpeed(date, speed)
+                );
+            });
     }
 
     /// <summary>
@@ -255,25 +250,4 @@ public sealed class CoupledWeatherProvider
     /// </summary>
     internal CoupledLatentAr1Chain CreateChain() =>
         new CoupledLatentAr1Chain(_solar.Model, _wind.Model, Coupling);
-
-    private static IEnumerable<CoupledWeatherDay> Iterate(
-        DateOnly start,
-        DateOnly endInclusive,
-        CoupledLatentAr1Chain chain,
-        SyntheticSolarGenerator solar,
-        SyntheticWindGenerator wind,
-        Random random
-    )
-    {
-        for (var date = start; date <= endInclusive; date = date.AddDays(1))
-        {
-            var (index, speed) = chain.Next(date, random);
-
-            yield return new CoupledWeatherDay(
-                date,
-                solar.DayFromIndex(date, index),
-                wind.DayFromReferenceSpeed(date, speed)
-            );
-        }
-    }
 }

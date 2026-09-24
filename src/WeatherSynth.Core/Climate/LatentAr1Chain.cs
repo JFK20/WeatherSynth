@@ -104,8 +104,7 @@ internal sealed class LatentAr1Chain
     /// <param name="random">Source of randomness.</param>
     public double Next(DateOnly date, Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         int gap = _lastDate is { } previous ? date.DayNumber - previous.DayNumber : 0;
 

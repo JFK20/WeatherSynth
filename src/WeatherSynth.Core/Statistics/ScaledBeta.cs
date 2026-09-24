@@ -87,8 +87,7 @@ internal sealed class ScaledBeta
     /// </exception>
     public static ScaledBeta FitByMoments(IEnumerable<double> values, double scale)
     {
-        if (values is null)
-            throw new ArgumentNullException(nameof(values));
+        ArgumentNullException.ThrowIfNull(values);
         if (!(scale > 0.0))
             throw new ArgumentOutOfRangeException(nameof(scale), scale, "Must be positive.");
 
@@ -317,8 +316,7 @@ internal sealed class ScaledBeta
     /// </summary>
     public double Sample(Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         double a = SampleStandardGamma(random, Alpha);
         double b = SampleStandardGamma(random, Beta);

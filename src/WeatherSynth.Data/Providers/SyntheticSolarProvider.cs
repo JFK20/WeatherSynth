@@ -48,8 +48,7 @@ public sealed class SyntheticSolarProvider
     /// <param name="station">Station metadata. Its coordinates become the fitting geometry.</param>
     public static SyntheticSolarProvider FromDwdRecord(string csvPath, DwdStation station)
     {
-        if (csvPath is null)
-            throw new ArgumentNullException(nameof(csvPath));
+        ArgumentNullException.ThrowIfNull(csvPath);
 
         var days = DwdSolarDayAggregator.ToDays(DwdSolarReader.Read(csvPath));
         return FromStationDays(days, station);
@@ -69,10 +68,8 @@ public sealed class SyntheticSolarProvider
         DwdStation station
     )
     {
-        if (days is null)
-            throw new ArgumentNullException(nameof(days));
-        if (station is null)
-            throw new ArgumentNullException(nameof(station));
+        ArgumentNullException.ThrowIfNull(days);
+        ArgumentNullException.ThrowIfNull(station);
 
         var usable = days.Where(d => d.IsComplete && !d.HasImplausibleZeros);
         var series = ClearnessIndexBuilder.Build(usable, station);
@@ -109,8 +106,7 @@ public sealed class SyntheticSolarProvider
     /// <param name="site">Site to generate for.</param>
     public SyntheticSolarYear GenerateYear(int year, int seed, SolarSite site)
     {
-        if (site is null)
-            throw new ArgumentNullException(nameof(site));
+        ArgumentNullException.ThrowIfNull(site);
 
         return CreateGenerator(site).GenerateYear(year, seed);
     }

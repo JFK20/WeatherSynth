@@ -176,8 +176,7 @@ public abstract class TurbinePowerCurve
             IEnumerable<(double SpeedMetersPerSecond, double PowerKilowatts)> points
         )
         {
-            if (points is null)
-                throw new ArgumentNullException(nameof(points));
+            ArgumentNullException.ThrowIfNull(points);
 
             var ordered = points.OrderBy(p => p.SpeedMetersPerSecond).ToList();
 

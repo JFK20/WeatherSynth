@@ -71,8 +71,7 @@ public sealed class SyntheticWindProvider
     /// <param name="station">Station metadata. Its anemometer height becomes the fitting height.</param>
     public static SyntheticWindProvider FromDwdRecord(string csvPath, DwdWindStation station)
     {
-        if (csvPath is null)
-            throw new ArgumentNullException(nameof(csvPath));
+        ArgumentNullException.ThrowIfNull(csvPath);
 
         var days = DwdWindDayAggregator.ToDays(DwdWindReader.Read(csvPath));
         return FromStationDays(days, station);
@@ -93,10 +92,8 @@ public sealed class SyntheticWindProvider
         DwdWindStation station
     )
     {
-        if (days is null)
-            throw new ArgumentNullException(nameof(days));
-        if (station is null)
-            throw new ArgumentNullException(nameof(station));
+        ArgumentNullException.ThrowIfNull(days);
+        ArgumentNullException.ThrowIfNull(station);
 
         var series = WindSpeedSeriesBuilder.Build(days);
         var model = WindSpeedModel.Fit(series, station.AnemometerHeightMeters);
@@ -152,8 +149,7 @@ public sealed class SyntheticWindProvider
         WindProfile? profile = null
     )
     {
-        if (site is null)
-            throw new ArgumentNullException(nameof(site));
+        ArgumentNullException.ThrowIfNull(site);
 
         return CreateGenerator(site, profile).GenerateYear(year, seed);
     }
@@ -205,8 +201,7 @@ public sealed class SyntheticWindProvider
         WindProfile? profile = null
     )
     {
-        if (curve is null)
-            throw new ArgumentNullException(nameof(curve));
+        ArgumentNullException.ThrowIfNull(curve);
 
         var days = CreateGenerator(site, profile).GenerateYear(year, new Random(seed));
 

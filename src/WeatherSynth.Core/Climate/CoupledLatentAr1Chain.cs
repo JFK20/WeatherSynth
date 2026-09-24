@@ -143,8 +143,7 @@ internal sealed class CoupledLatentAr1Chain
     /// <param name="random">Source of randomness, shared by both streams.</param>
     public (double A, double B) Next(DateOnly date, Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         int gap = _lastDate is { } previous ? date.DayNumber - previous.DayNumber : 0;
 

@@ -32,10 +32,8 @@ internal static class GoodnessOfFit
         Func<double, double> cdf
     )
     {
-        if (values is null)
-            throw new ArgumentNullException(nameof(values));
-        if (cdf is null)
-            throw new ArgumentNullException(nameof(cdf));
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(cdf);
 
         var sorted = values.OrderBy(v => v).ToList();
         double worst = 0.0;

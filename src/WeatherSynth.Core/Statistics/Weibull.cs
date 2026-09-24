@@ -154,8 +154,7 @@ internal sealed class Weibull
     /// </summary>
     public double Sample(Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         return Quantile(random.NextDouble());
     }

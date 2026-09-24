@@ -149,8 +149,7 @@ internal sealed class IntradayShapeModel
     /// </param>
     public static IntradayShapeModel Fit(IEnumerable<DailyWindSpeed> series)
     {
-        if (series is null)
-            throw new ArgumentNullException(nameof(series));
+        ArgumentNullException.ThrowIfNull(series);
 
         var logSpeed = new List<double>();
         var logFactor = new List<double>();

@@ -135,18 +135,11 @@ internal sealed class WindSpeedModel : IMonthlyMarginals
         double meanEnergyPatternFactor
     )
     {
-        if (monthly is null)
-            throw new ArgumentNullException(nameof(monthly));
-        if (monthly.Count != 12)
-            throw new ArgumentException(
-                $"Expected twelve monthly fits, got {monthly.Count}.",
-                nameof(monthly)
-            );
-        if (pooled is null)
-            throw new ArgumentNullException(nameof(pooled));
+        var resolved = MonthlyFit.RequireTwelve(monthly, nameof(monthly));
+        ArgumentNullException.ThrowIfNull(pooled);
 
         return new WindSpeedModel(
-            monthly.ToArray(),
+            resolved,
             pooled,
             persistence,
             referenceHeightMeters,
@@ -170,15 +163,10 @@ internal sealed class WindSpeedModel : IMonthlyMarginals
         double referenceHeightMeters = double.NaN
     )
     {
-        if (series is null)
-            throw new ArgumentNullException(nameof(series));
+        ArgumentNullException.ThrowIfNull(series);
 
-        var byMonth = new List<double>[12];
-        for (int i = 0; i < 12; i++)
-            byMonth[i] = new List<double>();
-
-        // Dates are kept alongside the values because the persistence fit below needs them,
-        // and the caller's sequence may be lazy - enumerating it a second time is not safe.
+        // Materialised because the fit walks it more than once, and the caller's sequence may be
+        // lazy - enumerating it a second time is not safe.
         var dated = new List<(DateOnly Date, double Speed)>();
         var patternFactors = new List<double>();
 
@@ -188,7 +176,6 @@ internal sealed class WindSpeedModel : IMonthlyMarginals
             if (double.IsNaN(speed))
                 continue;
 
-            byMonth[day.Date.Month - 1].Add(speed);
             dated.Add((day.Date, speed));
 
             double factor = day.EnergyPatternFactor;
@@ -199,22 +186,11 @@ internal sealed class WindSpeedModel : IMonthlyMarginals
         if (dated.Count == 0)
             throw new ArgumentException("No usable days in the series.", nameof(series));
 
-        var pooled = Weibull.FitByMaximumLikelihood(dated.Select(d => d.Speed));
-
-        var monthly = new Weibull[12];
-        for (int i = 0; i < 12; i++)
-        {
-            monthly[i] =
-                byMonth[i].Count >= MinimumSamplesPerMonth
-                    ? Weibull.FitByMaximumLikelihood(byMonth[i])
-                    : pooled;
-        }
-
-        // Order matters: phi is measured through the monthly CDFs, so they have to exist
-        // first. The same ordering constraint the solar model works under.
-        double persistence = SeriesStatistics.LatentPersistence(
+        var (monthly, pooled, persistence) = MonthlyFit.Fit(
             dated,
-            (speed, month) => monthly[month - 1].CumulativeProbability(speed)
+            Weibull.FitByMaximumLikelihood,
+            (weibull, speed) => weibull.CumulativeProbability(speed),
+            MinimumSamplesPerMonth
         );
 
         return new WindSpeedModel(

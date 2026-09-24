@@ -108,12 +108,9 @@ public sealed class TurbineYield
         IntradayShapeModel shape
     )
     {
-        if (days is null)
-            throw new ArgumentNullException(nameof(days));
-        if (curve is null)
-            throw new ArgumentNullException(nameof(curve));
-        if (shape is null)
-            throw new ArgumentNullException(nameof(shape));
+        ArgumentNullException.ThrowIfNull(days);
+        ArgumentNullException.ThrowIfNull(curve);
+        ArgumentNullException.ThrowIfNull(shape);
 
         var costed = new List<TurbineDay>();
         double powerSum = 0.0;
@@ -164,10 +161,8 @@ public sealed class TurbineYield
         double meanSpeedAtTarget
     )
     {
-        if (curve is null)
-            throw new ArgumentNullException(nameof(curve));
-        if (shape is null)
-            throw new ArgumentNullException(nameof(shape));
+        ArgumentNullException.ThrowIfNull(curve);
+        ArgumentNullException.ThrowIfNull(shape);
 
         if (double.IsNaN(meanSpeedAtTarget) || meanSpeedAtTarget <= 0.0)
             return 0.0;

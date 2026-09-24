@@ -25,8 +25,7 @@ internal static class SeriesStatistics
     /// <returns>The lag-1 correlation, or NaN if there are fewer than two consecutive pairs.</returns>
     public static double Lag1Autocorrelation(IEnumerable<(DateOnly Date, double Value)> series)
     {
-        if (series is null)
-            throw new ArgumentNullException(nameof(series));
+        ArgumentNullException.ThrowIfNull(series);
 
         var ordered = series.OrderBy(d => d.Date).ToList();
 
@@ -88,10 +87,8 @@ internal static class SeriesStatistics
         Func<double, int, double> cumulativeProbability
     )
     {
-        if (series is null)
-            throw new ArgumentNullException(nameof(series));
-        if (cumulativeProbability is null)
-            throw new ArgumentNullException(nameof(cumulativeProbability));
+        ArgumentNullException.ThrowIfNull(series);
+        ArgumentNullException.ThrowIfNull(cumulativeProbability);
 
         var latent = new List<(DateOnly Date, double Score)>();
 
@@ -130,8 +127,7 @@ internal static class SeriesStatistics
         Func<double, int, double> cumulativeProbability
     )
     {
-        if (cumulativeProbability is null)
-            throw new ArgumentNullException(nameof(cumulativeProbability));
+        ArgumentNullException.ThrowIfNull(cumulativeProbability);
 
         const double edge = 1e-12;
 
@@ -170,12 +166,9 @@ internal static class SeriesStatistics
         Func<double, int, double> cumulativeProbabilityB
     )
     {
-        if (paired is null)
-            throw new ArgumentNullException(nameof(paired));
-        if (cumulativeProbabilityA is null)
-            throw new ArgumentNullException(nameof(cumulativeProbabilityA));
-        if (cumulativeProbabilityB is null)
-            throw new ArgumentNullException(nameof(cumulativeProbabilityB));
+        ArgumentNullException.ThrowIfNull(paired);
+        ArgumentNullException.ThrowIfNull(cumulativeProbabilityA);
+        ArgumentNullException.ThrowIfNull(cumulativeProbabilityB);
 
         var scoresA = new List<double>();
         var scoresB = new List<double>();

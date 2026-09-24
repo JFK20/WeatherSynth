@@ -180,8 +180,7 @@ internal static class Gaussian
     /// </summary>
     public static double Sample(Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         // NextDouble() can return exactly 0, which Log would send to -infinity.
         double u1 = 1.0 - random.NextDouble();

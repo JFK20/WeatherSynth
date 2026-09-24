@@ -15,8 +15,7 @@ internal sealed class LinkeTurbidityTable
     /// <param name="monthlyValues">Twelve values, January first.</param>
     public LinkeTurbidityTable(double[] monthlyValues)
     {
-        if (monthlyValues is null)
-            throw new ArgumentNullException(nameof(monthlyValues));
+        ArgumentNullException.ThrowIfNull(monthlyValues);
         if (monthlyValues.Length != 12)
             throw new ArgumentException("Expected 12 monthly values.", nameof(monthlyValues));
 

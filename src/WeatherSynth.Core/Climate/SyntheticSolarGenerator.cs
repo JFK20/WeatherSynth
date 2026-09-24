@@ -60,8 +60,7 @@ internal sealed class SyntheticSolarGenerator
     /// </summary>
     public SyntheticSolarDay GenerateDay(DateOnly date, Random random)
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
+        ArgumentNullException.ThrowIfNull(random);
 
         return DayFromIndex(date, _chain.Next(date, random));
     }
@@ -103,17 +102,15 @@ internal sealed class SyntheticSolarGenerator
         Random random
     )
     {
-        if (random is null)
-            throw new ArgumentNullException(nameof(random));
-        if (endInclusive < start)
-            throw new ArgumentException("End must not precede start.", nameof(endInclusive));
+        ArgumentNullException.ThrowIfNull(random);
+        DailyRun.Validate(start, endInclusive);
 
-        // Outside the iterator, so both the argument checks and the reset happen when Generate
-        // is called rather than on the first MoveNext. Otherwise two enumerables taken from one
+        // Not an iterator, so both the argument checks and the reset happen when Generate is
+        // called rather than on the first MoveNext. Otherwise two enumerables taken from one
         // generator would silently share a chain until whichever was enumerated first.
         Reset();
 
-        return Iterate(start, endInclusive, random);
+        return DailyRun.Days(start, endInclusive).Select(date => GenerateDay(date, random));
     }
 
     /// <summary>
@@ -130,8 +127,11 @@ internal sealed class SyntheticSolarGenerator
     /// </summary>
     /// <param name="year">Calendar year to generate.</param>
     /// <param name="random">Source of randomness; seed it to make a run reproducible.</param>
-    public IEnumerable<SyntheticSolarDay> GenerateYear(int year, Random random) =>
-        Generate(new DateOnly(year, 1, 1), new DateOnly(year, 12, 31), random);
+    public IEnumerable<SyntheticSolarDay> GenerateYear(int year, Random random)
+    {
+        var (start, endInclusive) = DailyRun.Year(year);
+        return Generate(start, endInclusive, random);
+    }
 
     /// <summary>
     /// Generates a whole year from a seed, with its monthly and annual totals - the shape a
@@ -149,15 +149,5 @@ internal sealed class SyntheticSolarGenerator
         days.AddRange(GenerateYear(year, new Random(seed)));
 
         return new SyntheticSolarYear(year, seed, days);
-    }
-
-    private IEnumerable<SyntheticSolarDay> Iterate(
-        DateOnly start,
-        DateOnly endInclusive,
-        Random random
-    )
-    {
-        for (var date = start; date <= endInclusive; date = date.AddDays(1))
-            yield return GenerateDay(date, random);
     }
 }

@@ -57,10 +57,8 @@ public abstract class WindProfile
     {
         public override double Factor(WindSite reference, WindSite target)
         {
-            if (reference is null)
-                throw new ArgumentNullException(nameof(reference));
-            if (target is null)
-                throw new ArgumentNullException(nameof(target));
+            ArgumentNullException.ThrowIfNull(reference);
+            ArgumentNullException.ThrowIfNull(target);
 
             // Both sites validate height > roughness at construction, so both logarithms are
             // strictly positive here and the ratio cannot go negative or divide by zero.
@@ -89,10 +87,8 @@ public abstract class WindProfile
 
         public override double Factor(WindSite reference, WindSite target)
         {
-            if (reference is null)
-                throw new ArgumentNullException(nameof(reference));
-            if (target is null)
-                throw new ArgumentNullException(nameof(target));
+            ArgumentNullException.ThrowIfNull(reference);
+            ArgumentNullException.ThrowIfNull(target);
 
             return Math.Pow(target.HeightMeters / reference.HeightMeters, _exponent);
         }

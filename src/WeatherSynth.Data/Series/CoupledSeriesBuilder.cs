@@ -47,10 +47,8 @@ internal static class CoupledSeriesBuilder
         IEnumerable<DailyWindSpeed> wind
     )
     {
-        if (clearness is null)
-            throw new ArgumentNullException(nameof(clearness));
-        if (wind is null)
-            throw new ArgumentNullException(nameof(wind));
+        ArgumentNullException.ThrowIfNull(clearness);
+        ArgumentNullException.ThrowIfNull(wind);
 
         var speedByDate = new Dictionary<DateOnly, double>();
         foreach (var day in wind)
