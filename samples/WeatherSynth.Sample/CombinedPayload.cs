@@ -30,7 +30,7 @@ internal static class CombinedPayload
 
     public static JsonObject Build(
         IReadOnlyList<DwdSolarDay> solarDays,
-        DwdStation station,
+        DwdSolarStation station,
         IReadOnlyList<DwdWindDay> windDays,
         bool coupled
     )

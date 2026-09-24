@@ -46,7 +46,7 @@ public sealed class SyntheticSolarProvider
     /// </summary>
     /// <param name="csvPath">Path to the station's hourly solar record.</param>
     /// <param name="station">Station metadata. Its coordinates become the fitting geometry.</param>
-    public static SyntheticSolarProvider FromDwdRecord(string csvPath, DwdStation station)
+    public static SyntheticSolarProvider FromDwdRecord(string csvPath, DwdSolarStation station)
     {
         ArgumentNullException.ThrowIfNull(csvPath);
 
@@ -61,7 +61,7 @@ public sealed class SyntheticSolarProvider
     /// <param name="station">Station metadata. Its coordinates become the fitting geometry.</param>
     internal static SyntheticSolarProvider FromStationDays(
         IEnumerable<DwdSolarDay> days,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         ArgumentNullException.ThrowIfNull(days);
@@ -80,13 +80,13 @@ public sealed class SyntheticSolarProvider
     /// </summary>
     internal static IReadOnlyList<DailyClearness> BuildSeries(
         IEnumerable<DwdSolarDay> days,
-        DwdStation station
+        DwdSolarStation station
     ) => ClearnessIndexBuilder.Build(days.Where(d => d.IsUsable), station);
 
     /// <summary>Fits from a clearness series built by <see cref="BuildSeries"/>.</summary>
     internal static SyntheticSolarProvider FromSeries(
         IReadOnlyList<DailyClearness> series,
-        DwdStation station
+        DwdSolarStation station
     ) => new(ClearSkyIndexModel.Fit(series), station.ToSite());
 
     /// <summary>

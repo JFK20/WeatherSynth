@@ -28,7 +28,7 @@ public class CoupledWeatherProviderTests
 
         return CoupledWeatherProvider.FromDwdRecords(
             solarPath,
-            DwdStations.Bochum,
+            DwdSolarStations.Bochum,
             windPath,
             DwdWindStations.EssenBredeney
         );
@@ -196,7 +196,7 @@ public class CoupledWeatherProviderTests
 
         var clearness = ClearnessIndexBuilder.Build(
             solarDays.Where(d => d.IsUsable),
-            DwdStations.Bochum
+            DwdSolarStations.Bochum
         );
         var speeds = WindSpeedSeriesBuilder.Build(windDays);
 

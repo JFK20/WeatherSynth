@@ -28,7 +28,7 @@ public class TurbineYieldRecordTests
     private static List<DwdWindDay> Complete() =>
         Days!.Where(d => d.IsComplete && d.MeanSpeed > 0.0).ToList();
 
-    private static readonly TurbinePowerCurve Curve = DwdTurbines.Generic2Mw;
+    private static readonly TurbinePowerCurve Curve = ReferenceTurbines.Generic2Mw;
 
     /// <summary>Mean power over a day, summed hour by hour. The truth every estimate is scored against.</summary>
     private static double TrueMeanPower(DwdWindDay day, double transferFactor)
@@ -151,7 +151,7 @@ public class TurbineYieldRecordTests
             return;
 
         var reference = DwdWindStations.EssenBredeney.ToSite();
-        var hub = DwdTurbines.HundredMetreHub;
+        var hub = ReferenceTurbines.HundredMetreHub;
 
         double log = hub.TransferFactorFrom(reference, WindProfile.LogLaw);
         double power = hub.TransferFactorFrom(reference, WindProfile.PowerLaw());
@@ -184,7 +184,7 @@ public class TurbineYieldRecordTests
         {
             factors.Add(
                 provider
-                    .EstimateYield(2024, seed, Curve, DwdTurbines.HundredMetreHub)
+                    .EstimateYield(2024, seed, Curve, ReferenceTurbines.HundredMetreHub)
                     .CapacityFactor
             );
         }

@@ -10,7 +10,7 @@
 //
 //     What is NOT in here, deliberately: the clear-sky ceiling, which is recomputed
 //     at runtime from the site's geometry and the fitted Linke turbidity table, and
-//     both sites, which are already public constants (DwdStations.Bochum,
+//     both sites, which are already public constants (DwdSolarStations.Bochum,
 //     DwdWindStations.EssenBredeney). Only the stochastic half is frozen here.
 // </auto-generated>
 

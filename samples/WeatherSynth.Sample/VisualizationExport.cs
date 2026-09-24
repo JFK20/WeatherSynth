@@ -41,7 +41,7 @@ internal static class VisualizationExport
 
     public static int Run(
         IReadOnlyList<DwdSolarDay> days,
-        DwdStation station,
+        DwdSolarStation station,
         IReadOnlyList<DwdWindDay>? windDays = null,
         DwdWindStation? windStation = null,
         string[]? args = null
@@ -231,7 +231,7 @@ internal static class VisualizationExport
         IReadOnlyList<SyntheticSolarDay> synthetic,
         IReadOnlyList<(DateOnly Date, double Index)> independent,
         ClearSkyIndexModel model,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         var start = observed[0].Date;

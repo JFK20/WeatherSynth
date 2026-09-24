@@ -25,7 +25,7 @@ internal static class WindPowerReport
         var provider = SyntheticWindProvider.FromStationDays(days, station);
 
         var complete = days.Where(d => d.IsComplete && d.MeanSpeed > 0.0).ToList();
-        var curve = DwdTurbines.Generic2Mw;
+        var curve = ReferenceTurbines.Generic2Mw;
 
         TheCurve(curve);
         TheIntradayShape(shape, provider);
@@ -218,7 +218,7 @@ internal static class WindPowerReport
         Console.WriteLine("  profile                 speed factor   capacity factor    MWh/year");
 
         var reference = station.ToSite();
-        var hub = DwdTurbines.HundredMetreHub;
+        var hub = ReferenceTurbines.HundredMetreHub;
         var results = new List<double>();
 
         foreach (var profile in new[] { WindProfile.LogLaw, WindProfile.PowerLaw() })
@@ -291,7 +291,7 @@ internal static class WindPowerReport
 
         Console.WriteLine();
 
-        var atHub = provider.EstimateYield(2024, Seed, curve, DwdTurbines.HundredMetreHub);
+        var atHub = provider.EstimateYield(2024, Seed, curve, ReferenceTurbines.HundredMetreHub);
 
         Console.WriteLine("  Monthly, at the 100 m hub:");
         Console.WriteLine("  month      mean kW    capacity factor    MWh");
@@ -322,7 +322,7 @@ internal static class WindPowerReport
         {
             ensemble.Add(
                 provider
-                    .EstimateYield(2024, seed, curve, DwdTurbines.HundredMetreHub)
+                    .EstimateYield(2024, seed, curve, ReferenceTurbines.HundredMetreHub)
                     .CapacityFactor
             );
         }
@@ -359,7 +359,7 @@ internal static class WindPowerReport
         if (path is null)
             return double.NaN;
 
-        double factor = DwdTurbines.HundredMetreHub.TransferFactorFrom(station.ToSite());
+        double factor = ReferenceTurbines.HundredMetreHub.TransferFactorFrom(station.ToSite());
 
         var days = DwdWindDayAggregator
             .ToDays(DwdWindReader.Read(path))
@@ -386,7 +386,7 @@ internal static class WindPowerReport
         new[]
         {
             ($"{station.AnemometerHeightMeters:F0} m anemometer", station.ToSite()),
-            ("100 m hub (log law)", DwdTurbines.HundredMetreHub),
+            ("100 m hub (log law)", ReferenceTurbines.HundredMetreHub),
         };
 
     /// <summary>

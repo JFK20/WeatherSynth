@@ -21,7 +21,7 @@ internal static class ZenithDecomposition
     private const double DegToRad = Math.PI / 180.0;
     private const double RadToDeg = 180.0 / Math.PI;
 
-    public static void Run(IReadOnlyList<DwdSolarInterval> intervals, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarInterval> intervals, DwdSolarStation station)
     {
         Console.WriteLine("=== Decomposing the zenith residual ===");
         Console.WriteLine();
@@ -106,7 +106,7 @@ internal static class ZenithDecomposition
     /// rather than at the requested instant which would show up in the monthly table as an
     /// error proportional to dδ/dt, i.e. largest at the equinoxes and zero at the solstices.
     /// </summary>
-    private static void ProbeDeclinationWithinADay(DwdStation station)
+    private static void ProbeDeclinationWithinADay(DwdSolarStation station)
     {
         Console.WriteLine(
             "=== Library declination through 2015-03-20 (equinox, fastest change) ==="

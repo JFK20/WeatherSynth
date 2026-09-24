@@ -25,7 +25,7 @@ internal static class CouplingReport
 
     public static void Run(
         IReadOnlyList<DwdSolarDay> solarDays,
-        DwdStation solarStation,
+        DwdSolarStation solarStation,
         IReadOnlyList<DwdWindDay> windDays,
         DwdWindStation windStation
     )

@@ -75,7 +75,7 @@ public class SolarPositionTests
         if (dataPath is null)
             return; // Station file not present; nothing to validate against.
 
-        var station = DwdStations.Bochum;
+        var station = DwdSolarStations.Bochum;
         var calculator = new SolarPositionCalculator(
             station.LatitudeDegrees,
             station.LongitudeDegrees

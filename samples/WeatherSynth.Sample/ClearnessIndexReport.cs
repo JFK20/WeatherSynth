@@ -10,7 +10,7 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class ClearnessIndexReport
 {
-    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station)
     {
         var complete = days.Where(d => d.IsComplete).ToList();
         var usable = complete.Where(d => !d.HasImplausibleZeros).ToList();

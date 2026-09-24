@@ -110,7 +110,7 @@ public static class SyntheticWeather
         );
 
         // The fitting station's own geometry, which is what the index was divided by.
-        return new SyntheticSolarProvider(model, DwdStations.Bochum.ToSite());
+        return new SyntheticSolarProvider(model, DwdSolarStations.Bochum.ToSite());
     }
 
     private static SyntheticWindProvider BuildWind()

@@ -50,7 +50,7 @@ internal static class Program
             return 1;
         }
 
-        var station = DwdStations.Bochum;
+        var station = DwdSolarStations.Bochum;
 
         Console.WriteLine($"Reading {dataPath} ...");
         var intervals = DwdSolarReader.Read(dataPath).ToList();

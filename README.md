@@ -21,6 +21,13 @@ dotnet add package WeatherSynth
 
 That pulls in `WeatherSynth.Core` (the physics) automatically
 
+**Upgrading from 0.1:** three public types were renamed. Generated output is unchanged.
+
+| 0.1 | 0.2 |
+|---|---|
+| `DwdStation` / `DwdStations` | `DwdSolarStation` / `DwdSolarStations` |
+| `DwdTurbines` | `ReferenceTurbines` |
+
 ## Quick start
 
 No files, no fitting: `SyntheticWeather.Default` bundles a model already fitted from the Bochum
@@ -45,7 +52,7 @@ the bundled one.
 as many years as you need:
 
 ```csharp
-var provider = SyntheticSolarProvider.FromDwdRecord("data/dwd_bochum_solar.csv", DwdStations.Bochum);
+var provider = SyntheticSolarProvider.FromDwdRecord("data/dwd_bochum_solar.csv", DwdSolarStations.Bochum);
 
 // A year at the fitting station, reproducible from (year, seed).
 SyntheticSolarYear year = provider.GenerateYear(2026, seed: 42);
@@ -127,7 +134,7 @@ bit more realistic. It is an opt-in feature.
 
 ```csharp
 var both = CoupledWeatherProvider.FromDwdRecords(
-    "data/dwd_bochum_solar.csv", DwdStations.Bochum,
+    "data/dwd_bochum_solar.csv", DwdSolarStations.Bochum,
     "data/dwd_essen_wind.csv", DwdWindStations.EssenBredeney);
 
 CoupledWeatherYear year = both.GenerateYear(2026, seed: 42);

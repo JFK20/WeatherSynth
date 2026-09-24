@@ -13,7 +13,7 @@ namespace WeatherSynth.Sample;
 /// </summary>
 internal static class IndexFitReport
 {
-    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdStation station)
+    public static void Run(IReadOnlyList<DwdSolarDay> days, DwdSolarStation station)
     {
         var series = BuildSeries(days, station);
         var model = ClearSkyIndexModel.Fit(series);
@@ -50,7 +50,7 @@ internal static class IndexFitReport
     /// <summary>Builds the index series, applying both quality filters knowledge.md §11 calls for.</summary>
     internal static IReadOnlyList<DailyClearness> BuildSeries(
         IReadOnlyList<DwdSolarDay> days,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         var usable = days.Where(d => d.IsUsable).ToList();
@@ -119,7 +119,7 @@ internal static class IndexFitReport
     private static void Persistence(
         IReadOnlyList<DailyClearness> series,
         ClearSkyIndexModel model,
-        DwdStation station
+        DwdSolarStation station
     )
     {
         Console.WriteLine("=== Does the generator reproduce cloud persistence? ===");
@@ -247,7 +247,7 @@ internal static class IndexFitReport
             yield return (date, chain.Next(date, random));
     }
 
-    internal static DailyClearSkyCalculator Ceiling(DwdStation station) =>
+    internal static DailyClearSkyCalculator Ceiling(DwdSolarStation station) =>
         new(
             station.LatitudeDegrees,
             station.LongitudeDegrees,

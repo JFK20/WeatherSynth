@@ -1,12 +1,12 @@
 namespace WeatherSynth;
 
-/// <summary>Location metadata for a DWD measurement station.</summary>
+/// <summary>Location metadata for a DWD solar measurement station.</summary>
 /// <param name="Id">DWD station identifier (STATIONS_ID).</param>
 /// <param name="Name">Station name.</param>
 /// <param name="LatitudeDegrees">Latitude, north positive.</param>
 /// <param name="LongitudeDegrees">Longitude, east positive.</param>
 /// <param name="AltitudeMeters">Station elevation above sea level.</param>
-public sealed record DwdStation(
+public sealed record DwdSolarStation(
     int Id,
     string Name,
     double LatitudeDegrees,
@@ -24,8 +24,8 @@ public sealed record DwdStation(
         new(LatitudeDegrees, LongitudeDegrees, AltitudeMeters, TimeZoneInfo.Utc);
 }
 
-/// <summary>Stations this project has data for.</summary>
-public static class DwdStations
+/// <summary>Solar stations this project has data for.</summary>
+public static class DwdSolarStations
 {
     /// <summary>
     /// Bochum, North Rhine-Westphalia. Hourly solar record from 2009-01-01.
@@ -50,7 +50,7 @@ public static class DwdStations
     /// Any error in it is largely absorbed by the fitted Linke turbidity, since both act on the
     /// clear-sky magnitude.</para>
     /// </summary>
-    public static readonly DwdStation Bochum = new(
+    public static readonly DwdSolarStation Bochum = new(
         Id: 7365,
         Name: "Bochum",
         LatitudeDegrees: 51.4445,

@@ -70,7 +70,7 @@ public sealed class CoupledWeatherProvider
     /// <param name="windStation">Wind station metadata; its anemometer height becomes the fitting height.</param>
     public static CoupledWeatherProvider FromDwdRecords(
         string solarCsvPath,
-        DwdStation solarStation,
+        DwdSolarStation solarStation,
         string windCsvPath,
         DwdWindStation windStation
     )
@@ -100,7 +100,7 @@ public sealed class CoupledWeatherProvider
     /// <param name="windStation">Wind station metadata.</param>
     internal static CoupledWeatherProvider FromStationDays(
         IEnumerable<DwdSolarDay> solarDays,
-        DwdStation solarStation,
+        DwdSolarStation solarStation,
         IEnumerable<DwdWindDay> windDays,
         DwdWindStation windStation
     )

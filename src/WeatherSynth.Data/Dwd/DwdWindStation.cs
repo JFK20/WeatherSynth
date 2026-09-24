@@ -3,7 +3,7 @@ namespace WeatherSynth;
 /// <summary>
 /// Location metadata for a DWD wind measurement station.
 ///
-/// <para>Separate from <see cref="DwdStation"/> rather than an extension of it, because of one
+/// <para>Separate from <see cref="DwdSolarStation"/> rather than an extension of it, because of one
 /// field: <see cref="AnemometerHeightMeters"/>. Wind speed is only meaningful together with the
 /// height it was measured at, and a record with no field for that height invites the 10 m
 /// default that almost everyone assumes and that is wrong here.</para>

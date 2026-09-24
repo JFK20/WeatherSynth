@@ -10,11 +10,10 @@ namespace WeatherSynth;
 /// should use the real table through <see cref="TurbinePowerCurve.FromTable"/>. What these are for
 /// is having something concrete to integrate while the modelling is being checked.</para>
 ///
-/// <para>Named after the station convention in <see cref="DwdWindStations"/> only in spirit - a
-/// turbine has nothing to do with DWD. They live here because this is the assembly that already
+/// <para>They live beside <see cref="DwdWindStations"/> because this is the assembly that already
 /// carries reference data, and Core stays free of it.</para>
 /// </remarks>
-public static class DwdTurbines
+public static class ReferenceTurbines
 {
     /// <summary>
     /// A 2 MW onshore machine on the idealised curve: cut-in 3, rated 12.5, cut-out 25 m/s.

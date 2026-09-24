@@ -21,7 +21,7 @@ internal static class ClearnessIndexBuilder
     /// <param name="turbidityProvider">Optional turbidity override; defaults to the site fit.</param>
     public static IReadOnlyList<DailyClearness> Build(
         IEnumerable<DwdSolarDay> days,
-        DwdStation station,
+        DwdSolarStation station,
         Func<DateTime, double>? turbidityProvider = null
     )
     {

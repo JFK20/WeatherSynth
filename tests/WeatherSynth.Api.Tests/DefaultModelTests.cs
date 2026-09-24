@@ -41,7 +41,7 @@ public class DefaultModelTests
 
         var fitted = SyntheticSolarProvider.FromDwdRecord(
             GameUseCaseTests.SolarCsvPath,
-            DwdStations.Bochum
+            DwdSolarStations.Bochum
         );
 
         var fromRecord = fitted.GenerateYear(Year, Seed);
@@ -73,15 +73,15 @@ public class DefaultModelTests
         var yieldFromRecord = fitted.EstimateYield(
             Year,
             Seed,
-            DwdTurbines.Generic2Mw,
-            DwdTurbines.HundredMetreHub
+            ReferenceTurbines.Generic2Mw,
+            ReferenceTurbines.HundredMetreHub
         );
 
         var yieldFromCoefficients = SyntheticWeather.DefaultWind.EstimateYield(
             Year,
             Seed,
-            DwdTurbines.Generic2Mw,
-            DwdTurbines.HundredMetreHub
+            ReferenceTurbines.Generic2Mw,
+            ReferenceTurbines.HundredMetreHub
         );
 
         yieldFromCoefficients.CapacityFactor.Should().Be(yieldFromRecord.CapacityFactor);
@@ -96,7 +96,7 @@ public class DefaultModelTests
 
         var fitted = CoupledWeatherProvider.FromDwdRecords(
             GameUseCaseTests.SolarCsvPath,
-            DwdStations.Bochum,
+            DwdSolarStations.Bochum,
             GameUseCaseTests.WindCsvPath,
             DwdWindStations.EssenBredeney
         );
