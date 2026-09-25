@@ -62,8 +62,15 @@ internal sealed class SyntheticSolarGenerator
     {
         ArgumentNullException.ThrowIfNull(random);
 
-        return DayFromIndex(date, _chain.Next(date, random));
+        return NextDay(date, random, Span<double>.Empty);
     }
+
+    /// <summary>
+    /// One step of the chain turned into a day, optionally with its hourly ceilings. The one
+    /// place a draw becomes a day, so the streamed and the materialised year cannot drift.
+    /// </summary>
+    private SyntheticSolarDay NextDay(DateOnly date, Random random, Span<double> hourlyClearSkyWhPerM2) =>
+        DayFromIndex(date, _chain.Next(date, random), hourlyClearSkyWhPerM2);
 
     /// <summary>
     /// Builds the day for an index that has already been drawn, rather than drawing one.
@@ -187,7 +194,7 @@ internal sealed class SyntheticSolarGenerator
         {
             var hours = clearSkyByHour.AsSpan(days.Count * HourGrid.HoursPerDay, HourGrid.HoursPerDay);
 
-            days.Add(DayFromIndex(date, _chain.Next(date, random), hours));
+            days.Add(NextDay(date, random, hours));
             dayStarts.Add(DayStart(date));
         }
 

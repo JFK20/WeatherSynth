@@ -31,7 +31,7 @@ namespace WeatherSynth.Wind;
 internal sealed class HourlyWindModel
 {
     /// <summary>Hours in a day, as the record and the generator both count them.</summary>
-    public const int HoursPerDay = 24;
+    public const int HoursPerDay = HourGrid.HoursPerDay;
 
     /// <summary>
     /// Cap on the diurnal weight. At 1 the pattern would be the whole of every day and the

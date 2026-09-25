@@ -108,6 +108,14 @@ public sealed class CoupledWeatherYear
     ///
     /// <para>Computed with the year and stored compactly; the records themselves are built as they
     /// are read, so holding many years in a cache costs two numbers per hour, not two records.</para>
+    ///
+    /// <para><b>Starts are unique only in a zone without daylight saving.</b> Both halves are
+    /// bounded by the solar site's zone. Every day begins at its local midnight, at the UTC offset
+    /// in force at noon. For a site in a DST zone, the spring switch day therefore begins an hour
+    /// early and its first hour has the same <see cref="CoupledWeatherHour.Start"/> as the
+    /// previous day's last, with a different wind speed. The autumn switch day begins an hour
+    /// late, so one hour of the timeline has no entry. Do not key a dictionary on <c>Start</c>
+    /// there. The default site is in UTC, where every hour is contiguous and unique.</para>
     /// </summary>
     public IReadOnlyList<CoupledWeatherHour> Hours =>
         new HourView<CoupledWeatherHour>(Solar.Grid.Count, HourAt);
@@ -119,6 +127,9 @@ public sealed class CoupledWeatherYear
     /// <para>Clamped to this year, so a range reaching into the next one returns this year's part
     /// of it, and a range outside the year returns nothing. A span crossing New Year asks both
     /// years.</para>
+    ///
+    /// <para>In a DST zone, a range across the spring switch returns two hours with the same
+    /// start. See <see cref="Hours"/>.</para>
     /// </summary>
     /// <exception cref="ArgumentException">The end is before the start.</exception>
     public IReadOnlyList<CoupledWeatherHour> HoursBetween(

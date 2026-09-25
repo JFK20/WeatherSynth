@@ -11,10 +11,10 @@ namespace WeatherSynth;
 /// year stays small: the values live in one <c>double[]</c> per resource and the hour records are
 /// built only when read.</para>
 ///
-/// <para><b>Daylight saving is not smoothed over.</b> A day's start is its local midnight at the
-/// offset in force at noon, exactly as <c>DailyClearSkyCalculator</c> bounds it, so in a zone with
-/// DST the two switch days overlap or leave a gap of one hour. The default sites are in UTC, where
-/// every hour is contiguous.</para>
+/// <para><b>Daylight saving is not smoothed over.</b> A day's start is <see cref="DayStart"/>,
+/// the same rule the clear-sky ceiling bounds its days by, so in a zone with DST the two switch
+/// days overlap or leave a gap of one hour. The default sites are in UTC, where every hour is
+/// contiguous.</para>
 /// </summary>
 internal sealed class HourGrid
 {
@@ -23,6 +23,21 @@ internal sealed class HourGrid
 
     private static readonly TimeSpan OneHour = TimeSpan.FromHours(1);
     private static readonly TimeSpan OneDay = TimeSpan.FromDays(1);
+
+    /// <summary>
+    /// The instant a calendar day begins in <paramref name="zone"/>: local midnight, at the UTC
+    /// offset in force at noon. The one definition, shared by the ceiling and every hour grid.
+    ///
+    /// <para>Resolving the offset from noon avoids picking up the wrong one on DST transition
+    /// days, where midnight and noon can differ. The price is that those two days overlap or miss
+    /// an hour against their neighbours.</para>
+    /// </summary>
+    public static DateTimeOffset DayStart(DateOnly date, TimeZoneInfo zone)
+    {
+        var midnight = date.ToDateTime(TimeOnly.MinValue);
+
+        return new DateTimeOffset(midnight, zone.GetUtcOffset(midnight.AddHours(12)));
+    }
 
     private readonly DateTimeOffset[] _dayStarts;
 

@@ -267,23 +267,11 @@ internal sealed class DailyClearSkyCalculator
     }
 
     /// <summary>
-    /// The instant a calendar day begins at this site: local midnight, at the UTC offset in force
-    /// at noon.
-    ///
-    /// <para>Resolving the offset from noon avoids picking up the wrong one on DST transition
-    /// days, where midnight and noon can differ. The price is that those two days overlap or miss
-    /// an hour against their neighbours.</para>
+    /// The instant a calendar day begins at this site. See <see cref="HourGrid.DayStart"/>, which
+    /// is the rule, including why the offset is resolved from noon.
     /// </summary>
-    public DateTimeOffset DayStart(DateTime date)
-    {
-        var day = date.Date;
-
-        TimeSpan utcOffset = _timeZone.GetUtcOffset(
-            DateTime.SpecifyKind(day.AddHours(12), DateTimeKind.Unspecified)
-        );
-
-        return new DateTimeOffset(day, utcOffset);
-    }
+    public DateTimeOffset DayStart(DateTime date) =>
+        HourGrid.DayStart(DateOnly.FromDateTime(date), _timeZone);
 
     /// <summary>The zone this calculator's days are bounded in.</summary>
     public TimeZoneInfo TimeZone => _timeZone;

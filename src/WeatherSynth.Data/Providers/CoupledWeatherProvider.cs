@@ -198,19 +198,17 @@ public sealed class CoupledWeatherProvider
         foreach (var date in DailyRun.Days(start, endInclusive))
         {
             int offset = days.Count * HourGrid.HoursPerDay;
-            var (index, speed) = chain.Next(date, random);
 
             // The solar site bounds the day for both halves, so a coupled hour is one instant.
             var dayStart = solarGenerator.DayStart(date);
 
-            var day = new CoupledWeatherDay(
+            var day = NextDay(
                 date,
-                solarGenerator.DayFromIndex(
-                    date,
-                    index,
-                    clearSkyByHour.AsSpan(offset, HourGrid.HoursPerDay)
-                ),
-                windGenerator.DayFromReferenceSpeed(date, speed)
+                random,
+                chain,
+                solarGenerator,
+                windGenerator,
+                clearSkyByHour.AsSpan(offset, HourGrid.HoursPerDay)
             );
 
             hourlyWind.FillDay(
@@ -269,15 +267,31 @@ public sealed class CoupledWeatherProvider
         return DailyRun
             .Days(start, endInclusive)
             .Select(date =>
-            {
-                var (index, speed) = chain.Next(date, random);
+                NextDay(date, random, chain, solarGenerator, windGenerator, Span<double>.Empty)
+            );
+    }
 
-                return new CoupledWeatherDay(
-                    date,
-                    solarGenerator.DayFromIndex(date, index),
-                    windGenerator.DayFromReferenceSpeed(date, speed)
-                );
-            });
+    /// <summary>
+    /// One joint draw turned into a day, optionally with its hourly clear-sky ceilings. The one
+    /// place the pair becomes a day, so <see cref="Generate"/> and <see cref="GenerateYear(int, int)"/>
+    /// cannot drift apart.
+    /// </summary>
+    private static CoupledWeatherDay NextDay(
+        DateOnly date,
+        Random random,
+        CoupledLatentAr1Chain chain,
+        SyntheticSolarGenerator solarGenerator,
+        SyntheticWindGenerator windGenerator,
+        Span<double> hourlyClearSkyWhPerM2
+    )
+    {
+        var (index, speed) = chain.Next(date, random);
+
+        return new CoupledWeatherDay(
+            date,
+            solarGenerator.DayFromIndex(date, index, hourlyClearSkyWhPerM2),
+            windGenerator.DayFromReferenceSpeed(date, speed)
+        );
     }
 
     /// <summary>

@@ -191,24 +191,19 @@ internal sealed class SyntheticWindGenerator
     /// <para>The days are drawn exactly as without hours - same stream, same order - and the hours
     /// come from a second stream seeded through <see cref="HourlyWindGenerator.StreamSeed"/>, so
     /// asking for hours changes no day.</para>
+    ///
+    /// <para>The days are bounded in UTC, which is how the record's own days are bounded. A wind
+    /// year on another zone's clock is the coupled provider's business: it bounds both halves by
+    /// the solar site.</para>
     /// </summary>
     /// <param name="year">Calendar year to generate.</param>
     /// <param name="seed">Seed for the run. The same seed and site reproduce days and hours exactly.</param>
     /// <param name="hourly">Spreads each day over its hours. Reset here before the first day.</param>
-    /// <param name="timeZone">
-    /// Zone whose midnights bound the days' hours; UTC when null, which is how the record's own
-    /// days are bounded.
-    /// </param>
-    public SyntheticWindYear GenerateYear(
-        int year,
-        int seed,
-        HourlyWindGenerator hourly,
-        TimeZoneInfo? timeZone = null
-    )
+    public SyntheticWindYear GenerateYear(int year, int seed, HourlyWindGenerator hourly)
     {
         ArgumentNullException.ThrowIfNull(hourly);
 
-        var zone = timeZone ?? TimeZoneInfo.Utc;
+        var zone = TimeZoneInfo.Utc;
         var days = new List<SyntheticWindDay>(366);
         days.AddRange(GenerateYear(year, new Random(seed)));
 
@@ -220,7 +215,7 @@ internal sealed class SyntheticWindGenerator
 
         for (int i = 0; i < days.Count; i++)
         {
-            var dayStart = MidnightIn(days[i].Date, zone);
+            var dayStart = HourGrid.DayStart(days[i].Date, zone);
             dayStarts.Add(dayStart);
 
             hourly.FillDay(
@@ -232,16 +227,5 @@ internal sealed class SyntheticWindGenerator
         }
 
         return new SyntheticWindYear(year, seed, days, new HourGrid(dayStarts, zone), speedByHour);
-    }
-
-    /// <summary>
-    /// Local midnight in <paramref name="zone"/>, at the offset in force at noon - the same rule
-    /// the solar ceiling bounds its days by, so wind hours generated alone and solar hours line up.
-    /// </summary>
-    internal static DateTimeOffset MidnightIn(DateOnly date, TimeZoneInfo zone)
-    {
-        var midnight = date.ToDateTime(TimeOnly.MinValue);
-
-        return new DateTimeOffset(midnight, zone.GetUtcOffset(midnight.AddHours(12)));
     }
 }

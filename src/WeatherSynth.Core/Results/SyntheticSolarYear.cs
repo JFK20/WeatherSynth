@@ -169,6 +169,14 @@ public sealed class SyntheticSolarYear
     ///
     /// <para>Computed with the year and stored compactly; the records themselves are built as they
     /// are read, so holding many years in a cache costs one number per hour, not one record.</para>
+    ///
+    /// <para><b>Starts are unique only in a zone without daylight saving.</b> Every day's hours
+    /// begin at its local midnight, at the UTC offset in force at noon. For a site in a DST zone,
+    /// the spring switch day therefore begins an hour early and its first hour has the same
+    /// <see cref="SyntheticSolarHour.Start"/> as the previous day's last. The autumn switch day
+    /// begins an hour late, so one hour of the timeline has no entry. Do not key a dictionary
+    /// on <c>Start</c> there. The default site is in UTC, where every hour is contiguous and
+    /// unique.</para>
     /// </summary>
     public IReadOnlyList<SyntheticSolarHour> Hours => new HourView<SyntheticSolarHour>(Grid.Count, HourAt);
 
@@ -178,6 +186,9 @@ public sealed class SyntheticSolarYear
     ///
     /// <para>Clamped to this year, so a range reaching into the next one returns this year's part
     /// of it, and a range outside the year returns nothing.</para>
+    ///
+    /// <para>In a DST zone, a range across the spring switch returns two hours with the same
+    /// start. See <see cref="Hours"/>.</para>
     /// </summary>
     /// <exception cref="ArgumentException">The end is before the start.</exception>
     public IReadOnlyList<SyntheticSolarHour> HoursBetween(

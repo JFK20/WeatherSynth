@@ -185,6 +185,15 @@ public sealed class SyntheticWindYear
     ///
     /// <para>Computed with the year and stored compactly; the records themselves are built as they
     /// are read, so holding many years in a cache costs one number per hour, not one record.</para>
+    ///
+    /// <para><b>Starts are unique only in a zone without daylight saving.</b> A wind year
+    /// generated on its own is bounded in UTC, where every hour is contiguous and unique. Inside
+    /// a <see cref="CoupledWeatherYear"/> it takes the solar site's zone. If that zone has DST,
+    /// each day begins at local midnight at the offset in force at noon. The spring switch day
+    /// then begins an hour early, and its first hour has the same
+    /// <see cref="SyntheticWindHour.Start"/> as the previous day's last, with a different speed.
+    /// The autumn switch day begins an hour late, so one hour of the timeline has no entry.
+    /// Do not key a dictionary on <c>Start</c> there.</para>
     /// </summary>
     public IReadOnlyList<SyntheticWindHour> Hours => new HourView<SyntheticWindHour>(Grid.Count, HourAt);
 
@@ -194,6 +203,9 @@ public sealed class SyntheticWindYear
     ///
     /// <para>Clamped to this year, so a range reaching into the next one returns this year's part
     /// of it, and a range outside the year returns nothing.</para>
+    ///
+    /// <para>In a DST zone, a range across the spring switch returns two hours with the same
+    /// start. See <see cref="Hours"/>.</para>
     /// </summary>
     /// <exception cref="ArgumentException">The end is before the start.</exception>
     public IReadOnlyList<SyntheticWindHour> HoursBetween(

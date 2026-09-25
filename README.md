@@ -58,6 +58,11 @@ A `DateTime` without a kind is read in the site's time zone, which is UTC for th
 in the server's local zone. The range is clamped to the year, so a span across New Year needs both
 years. `SyntheticSolarYear` and `SyntheticWindYear` have the same `Hours` and `HoursBetween`.
 
+Each day's hours start at its local midnight. With a solar site in a daylight-saving zone, the two
+switch days are an hour off against their neighbours: in spring two hours share a `Start`, and in
+autumn one hour of the timeline has no entry. Don't key a dictionary on `Start` in such a zone. The
+default site is in UTC, so every hour is contiguous and unique.
+
 **The daily values do not change.** The hours come from a random stream of their own, so a year
 with hours has exactly the days it had before.
 

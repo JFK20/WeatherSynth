@@ -67,8 +67,8 @@ internal static class WindSpeedSeriesBuilder
             if (!day.IsComplete || !(day.MeanSpeed > 0.0))
                 continue;
 
-            var speeds = new double[24];
-            var seen = new bool[24];
+            var speeds = new double[HourGrid.HoursPerDay];
+            var seen = new bool[HourGrid.HoursPerDay];
             bool valid = true;
 
             foreach (var hour in day.Hours)
@@ -87,7 +87,9 @@ internal static class WindSpeedSeriesBuilder
                 speeds[utcHour] = speed;
             }
 
-            if (valid && Array.TrueForAll(seen, s => s))
+            // A complete day has 24 valid hours on its own UTC date, so with no hour seen twice
+            // every slot is filled.
+            if (valid)
                 series.Add((day.Date.Month, speeds));
         }
 
