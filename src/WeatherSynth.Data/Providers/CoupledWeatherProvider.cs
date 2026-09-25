@@ -1,5 +1,6 @@
 using WeatherSynth.Climate;
 using WeatherSynth.Data;
+using WeatherSynth.Wind;
 
 namespace WeatherSynth;
 
@@ -112,11 +113,14 @@ public sealed class CoupledWeatherProvider
 
         // Each series is built once and shared, so the coupling sees exactly the days the marginals
         // were fitted on and no others.
+        var windRecord = windDays as IReadOnlyList<DwdWindDay> ?? windDays.ToList();
+
         var clearness = SyntheticSolarProvider.BuildSeries(solarDays, solarStation);
-        var speeds = WindSpeedSeriesBuilder.Build(windDays);
+        var speeds = WindSpeedSeriesBuilder.Build(windRecord);
+        var hourly = HourlyWindModel.Fit(WindSpeedSeriesBuilder.BuildHourly(windRecord));
 
         var solar = SyntheticSolarProvider.FromSeries(clearness, solarStation);
-        var wind = SyntheticWindProvider.FromSeries(speeds, windStation);
+        var wind = SyntheticWindProvider.FromSeries(speeds, hourly, windStation);
 
         var paired = CoupledSeriesBuilder.Build(clearness, speeds);
 
@@ -174,11 +178,58 @@ public sealed class CoupledWeatherProvider
     )
     {
         var (start, endInclusive) = DailyRun.Year(year);
+        int dayCount = endInclusive.DayNumber - start.DayNumber + 1;
 
-        var days = new List<CoupledWeatherDay>(366);
-        days.AddRange(Generate(start, endInclusive, seed, solarSite, windSite, profile));
+        var solarGenerator = _solar.CreateGenerator(solarSite);
+        var windGenerator = _wind.CreateGenerator(windSite, profile);
+        var hourlyWind = _wind.CreateHourlyGenerator();
+        var chain = CreateChain();
 
-        return new CoupledWeatherYear(year, seed, days);
+        // The daily stream exactly as Generate draws it; the hours have a stream of their own,
+        // so asking for them moves no day.
+        var random = new Random(seed);
+        var hourlyRandom = new Random(HourlyWindGenerator.StreamSeed(seed));
+
+        var days = new List<CoupledWeatherDay>(dayCount);
+        var dayStarts = new List<DateTimeOffset>(dayCount);
+        var clearSkyByHour = new double[dayCount * HourGrid.HoursPerDay];
+        var speedByHour = new double[dayCount * HourGrid.HoursPerDay];
+
+        foreach (var date in DailyRun.Days(start, endInclusive))
+        {
+            int offset = days.Count * HourGrid.HoursPerDay;
+
+            // The solar site bounds the day for both halves, so a coupled hour is one instant.
+            var dayStart = solarGenerator.DayStart(date);
+
+            var day = NextDay(
+                date,
+                random,
+                chain,
+                solarGenerator,
+                windGenerator,
+                clearSkyByHour.AsSpan(offset, HourGrid.HoursPerDay)
+            );
+
+            hourlyWind.FillDay(
+                day.Wind,
+                dayStart,
+                hourlyRandom,
+                speedByHour.AsSpan(offset, HourGrid.HoursPerDay)
+            );
+
+            days.Add(day);
+            dayStarts.Add(dayStart);
+        }
+
+        return new CoupledWeatherYear(
+            year,
+            seed,
+            days,
+            new HourGrid(dayStarts, solarGenerator.TimeZone),
+            clearSkyByHour,
+            speedByHour
+        );
     }
 
     /// <summary>
@@ -216,15 +267,31 @@ public sealed class CoupledWeatherProvider
         return DailyRun
             .Days(start, endInclusive)
             .Select(date =>
-            {
-                var (index, speed) = chain.Next(date, random);
+                NextDay(date, random, chain, solarGenerator, windGenerator, Span<double>.Empty)
+            );
+    }
 
-                return new CoupledWeatherDay(
-                    date,
-                    solarGenerator.DayFromIndex(date, index),
-                    windGenerator.DayFromReferenceSpeed(date, speed)
-                );
-            });
+    /// <summary>
+    /// One joint draw turned into a day, optionally with its hourly clear-sky ceilings. The one
+    /// place the pair becomes a day, so <see cref="Generate"/> and <see cref="GenerateYear(int, int)"/>
+    /// cannot drift apart.
+    /// </summary>
+    private static CoupledWeatherDay NextDay(
+        DateOnly date,
+        Random random,
+        CoupledLatentAr1Chain chain,
+        SyntheticSolarGenerator solarGenerator,
+        SyntheticWindGenerator windGenerator,
+        Span<double> hourlyClearSkyWhPerM2
+    )
+    {
+        var (index, speed) = chain.Next(date, random);
+
+        return new CoupledWeatherDay(
+            date,
+            solarGenerator.DayFromIndex(date, index, hourlyClearSkyWhPerM2),
+            windGenerator.DayFromReferenceSpeed(date, speed)
+        );
     }
 
     /// <summary>
@@ -233,7 +300,7 @@ public sealed class CoupledWeatherProvider
     ///
     /// <para>It yields latent-transformed pairs - a clear-sky index and a daily mean speed at the
     /// fitting height - and applies neither the ceiling nor the height transfer. Feed them to
-    /// <see cref="SyntheticSolarGenerator.DayFromIndex"/> and
+    /// <see cref="SyntheticSolarGenerator.DayFromIndex(DateOnly, double)"/> and
     /// <see cref="SyntheticWindGenerator.DayFromReferenceSpeed"/> rather than re-deriving either;
     /// both exist for exactly this.</para>
     ///

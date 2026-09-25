@@ -41,25 +41,48 @@ public sealed class SyntheticWindProvider
     { }
 
     /// <summary>
+    /// Wraps an already-fitted model and intra-day shape, with no hourly record behind them: hours
+    /// are persistent at <see cref="DefaultHourlyPersistence"/> and carry no diurnal cycle.
+    /// </summary>
+    internal SyntheticWindProvider(
+        WindSpeedModel model,
+        WindSite fittedAt,
+        IntradayShapeModel intradayShape
+    )
+        : this(model, fittedAt, intradayShape, HourlyWindModel.Flat(DefaultHourlyPersistence)) { }
+
+    /// <summary>
     /// Wraps an already-fitted model and an already-fitted intra-day shape.
     /// </summary>
     /// <param name="model">The fitted distributions - twelve Weibulls plus the persistence.</param>
     /// <param name="fittedAt">Height and roughness the model was fitted at.</param>
     /// <param name="intradayShape">
     /// How each day's wind is spread across its own hours, which is what a power curve has to be
-    /// integrated over. Only <see cref="EstimateYield"/> consumes it; the speed generation above is
-    /// untouched by it.
+    /// integrated over, and what the hourly speeds are drawn through. The daily speed generation
+    /// is untouched by it.
+    /// </param>
+    /// <param name="hourlyModel">
+    /// The diurnal cycle and hourly persistence that order each day's hours. Only the hours
+    /// consume it.
     /// </param>
     internal SyntheticWindProvider(
         WindSpeedModel model,
         WindSite fittedAt,
-        IntradayShapeModel intradayShape
+        IntradayShapeModel intradayShape,
+        HourlyWindModel hourlyModel
     )
     {
         Model = model ?? throw new ArgumentNullException(nameof(model));
         _fittedAt = fittedAt ?? throw new ArgumentNullException(nameof(fittedAt));
         IntradayShape = intradayShape ?? throw new ArgumentNullException(nameof(intradayShape));
+        HourlyModel = hourlyModel ?? throw new ArgumentNullException(nameof(hourlyModel));
     }
+
+    /// <summary>
+    /// Hourly persistence assumed when no hourly record was fitted: the Essen-Bredeney fit,
+    /// rounded. See <see cref="HourlyWindModel.Persistence"/>.
+    /// </summary>
+    internal const double DefaultHourlyPersistence = 0.91;
 
     private static WindSpeedModel NonNull(WindSpeedModel model) =>
         model ?? throw new ArgumentNullException(nameof(model));
@@ -95,15 +118,25 @@ public sealed class SyntheticWindProvider
         ArgumentNullException.ThrowIfNull(days);
         ArgumentNullException.ThrowIfNull(station);
 
-        return FromSeries(WindSpeedSeriesBuilder.Build(days), station);
+        var record = days as IReadOnlyList<DwdWindDay> ?? days.ToList();
+
+        return FromSeries(
+            WindSpeedSeriesBuilder.Build(record),
+            HourlyWindModel.Fit(WindSpeedSeriesBuilder.BuildHourly(record)),
+            station
+        );
     }
 
     /// <summary>
     /// Fits from a speed series built by <see cref="WindSpeedSeriesBuilder.Build"/>, for callers
     /// that fit more than one thing on the same days, as <see cref="CoupledWeatherProvider"/> does.
     /// </summary>
+    /// <param name="series">The daily speeds.</param>
+    /// <param name="hourlyModel">The hourly model, fitted on the same days' hours.</param>
+    /// <param name="station">Station metadata.</param>
     internal static SyntheticWindProvider FromSeries(
         IReadOnlyList<DailyWindSpeed> series,
+        HourlyWindModel hourlyModel,
         DwdWindStation station
     )
     {
@@ -113,7 +146,7 @@ public sealed class SyntheticWindProvider
         // rather than a second read of the record.
         var intradayShape = IntradayShapeModel.Fit(series);
 
-        return new SyntheticWindProvider(model, station.ToSite(), intradayShape);
+        return new SyntheticWindProvider(model, station.ToSite(), intradayShape, hourlyModel);
     }
 
     /// <summary>
@@ -127,6 +160,12 @@ public sealed class SyntheticWindProvider
     /// mean speed cannot supply. See <see cref="IntradayShapeModel"/>.
     /// </summary>
     internal IntradayShapeModel IntradayShape { get; }
+
+    /// <summary>
+    /// How each day's hours are ordered - the diurnal cycle and the hourly persistence. See
+    /// <see cref="HourlyWindModel"/>.
+    /// </summary>
+    internal HourlyWindModel HourlyModel { get; }
 
     /// <summary>
     /// A synthetic year at the height the model was fitted at.
@@ -162,7 +201,7 @@ public sealed class SyntheticWindProvider
     {
         ArgumentNullException.ThrowIfNull(site);
 
-        return CreateGenerator(site, profile).GenerateYear(year, seed);
+        return CreateGenerator(site, profile).GenerateYear(year, seed, CreateHourlyGenerator());
     }
 
     /// <summary>
@@ -236,4 +275,9 @@ public sealed class SyntheticWindProvider
         var target = site ?? _fittedAt;
         return new SyntheticWindGenerator(Model, target.TransferFactorFrom(_fittedAt, profile));
     }
+
+    /// <summary>
+    /// Spreads this provider's days over their hours. Carries the previous hour, so one per run.
+    /// </summary>
+    internal HourlyWindGenerator CreateHourlyGenerator() => new(HourlyModel, IntradayShape);
 }

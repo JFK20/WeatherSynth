@@ -65,6 +65,7 @@ internal static class ModelExport
             coupled.Solar.Model,
             coupled.Wind.Model,
             coupled.Wind.IntradayShape,
+            coupled.Wind.HourlyModel,
             coupled.Coupling,
             solarDays,
             solarStation,
@@ -93,6 +94,7 @@ internal static class ModelExport
         ClearSkyIndexModel solar,
         WindSpeedModel wind,
         IntradayShapeModel intraday,
+        HourlyWindModel hourly,
         MonthlyCoupling coupling,
         IReadOnlyList<DwdSolarDay> solarDays,
         DwdSolarStation solarStation,
@@ -186,13 +188,30 @@ internal static class ModelExport
 
         Comment(
             text,
-            "Intra-day shape: least squares of log(EPF) on log(mean speed). Only the turbine",
-            "yield consumes it; speed generation is untouched by it."
+            "Intra-day shape: least squares of log(EPF) on log(mean speed). The turbine yield",
+            "and the hourly speeds consume it; daily speed generation is untouched by it."
         );
         Scalar(text, "IntradayIntercept", intraday.Intercept);
         Scalar(text, "IntradaySlope", intraday.Slope);
         Scalar(text, "IntradayPooledEnergyPatternFactor", intraday.PooledEnergyPatternFactor);
         Integer(text, "IntradaySampleCount", intraday.SampleCount);
+
+        Comment(
+            text,
+            "Hourly ordering: the calibrated hourly persistence, and per month the diurnal",
+            "weight and its standardised pattern by UTC hour. Only the hours consume these;",
+            "no daily value depends on them."
+        );
+        Scalar(text, "HourlyPersistence", hourly.Persistence);
+        Integer(text, "HourlySampleCount", hourly.SampleCount);
+        Doubles(text, "DiurnalWeight", hourly.DiurnalWeights);
+        Block(
+            text,
+            "double",
+            "DiurnalPattern",
+            hourly.DiurnalPatterns.Select(Literal),
+            i => $"{MonthNames[i / 24]} {i % 24:00}h UTC"
+        );
 
         Comment(
             text,
@@ -245,7 +264,8 @@ internal static class ModelExport
         StringBuilder text,
         string type,
         string name,
-        IEnumerable<string> literals
+        IEnumerable<string> literals,
+        Func<int, string>? label = null
     )
     {
         text.Append("\n    internal static readonly ")
@@ -254,13 +274,16 @@ internal static class ModelExport
             .Append(name)
             .Append(" =\n    {\n");
 
-        int month = 0;
+        int entry = 0;
         foreach (string literal in literals)
+        {
             text.Append("        ")
                 .Append(literal)
                 .Append(", // ")
-                .Append(MonthNames[month++])
+                .Append(label is null ? MonthNames[entry] : label(entry))
                 .Append('\n');
+            entry++;
+        }
 
         text.Append("    };\n");
     }

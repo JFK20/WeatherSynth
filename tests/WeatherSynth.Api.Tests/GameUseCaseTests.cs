@@ -84,6 +84,36 @@ public class GameUseCaseTests
         again.Days.Should().Equal(year.Days);
     }
 
+    /// <summary>
+    /// Hours, the way a game reads them: a stretch of one day, by wall-clock time. Uses the
+    /// bundled model, so it runs with no data files.
+    /// </summary>
+    [Fact]
+    public void A_game_can_ask_for_the_hours_of_a_morning()
+    {
+        var year = SyntheticWeather.Default.GenerateYear(2025, seed: 4242);
+
+        var morning = year.HoursBetween(new DateTime(2025, 1, 1, 6, 0, 0), new DateTime(2025, 1, 1, 12, 0, 0));
+
+        morning.Should().HaveCount(6);
+        morning[0].Start.Should().Be(new DateTimeOffset(2025, 1, 1, 6, 0, 0, TimeSpan.Zero));
+
+        foreach (var hour in morning)
+        {
+            hour.Solar.GhiWhPerM2.Should().BeGreaterThanOrEqualTo(0.0).And.BeLessThan(1000.0);
+            hour.Wind.Speed.Should().BeGreaterThan(0.0).And.BeLessThan(40.0);
+        }
+
+        // Hours and days are one generation, not two: a day's hours carry the day exactly.
+        var day = year.Days[0];
+        var dayHours = year.HoursBetween(new DateTime(2025, 1, 1), new DateTime(2025, 1, 2));
+
+        dayHours.Sum(h => h.Solar.GhiWhPerM2).Should().BeApproximately(day.Solar.GhiWhPerM2, 1e-6);
+        dayHours.Average(h => h.Wind.Speed).Should().BeApproximately(day.Wind.MeanSpeed, 1e-9);
+
+        year.Hours.Should().HaveCount(365 * 24);
+    }
+
     [Fact]
     public void A_game_can_ask_what_a_turbine_would_produce()
     {

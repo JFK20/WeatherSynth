@@ -6,7 +6,7 @@ namespace WeatherSynth.Data;
 internal sealed class DwdWindDay
 {
     /// <summary>Hours in a complete day. DWD hourly wind files are strictly hourly.</summary>
-    private const int HoursPerDay = 24;
+    private const int HoursPerDay = HourGrid.HoursPerDay;
 
     internal DwdWindDay(DateOnly date, IReadOnlyList<DwdWindHour> hours)
     {
